@@ -545,6 +545,10 @@ tr:hover td{background:rgba(99,102,241,0.025)}
 
 <!-- ═══════════ DASHBOARD ════════════════════════════════ -->
 <div id="page-dashboard" class="pg active">
+  <div style="margin-bottom:11px;padding:8px 13px;background:rgba(251,191,36,0.10);border:0.5px solid rgba(251,191,36,0.38);border-radius:9px;display:flex;align-items:center;gap:8px;font-size:11px;color:#92400e">
+    <span style="font-weight:700">⚠️ Beta Version</span>
+    <span>This tracker is currently in testing. Please export your data regularly. We do not guarantee data retention.</span>
+  </div>
   <div class="pills">
     <button class="fp active" onclick="setF('all',this)"><i class="ti ti-layout-grid"></i>All</button>
     <button class="fp" onclick="setF('FR',this)"><i class="ti ti-book-2"></i>FR</button>
@@ -1170,6 +1174,10 @@ function showAuthScreen(){
         </button>
         <div style="text-align:center;margin-top:14px">
           <button onclick="doForgot()" style="background:none;border:none;color:#818cf8;font-size:11.5px;cursor:pointer;font-family:inherit">Forgot password?</button>
+        </div>
+        <div style="margin-top:18px;padding:9px 12px;background:rgba(251,191,36,0.12);border:0.5px solid rgba(251,191,36,0.4);border-radius:8px;text-align:center">
+          <div style="font-size:11px;font-weight:700;color:#92400e;margin-bottom:2px">⚠️ Beta Version</div>
+          <div style="font-size:10.5px;color:#a16207;line-height:1.5">This tracker is currently in testing. Please export your data regularly. We do not guarantee data retention.</div>
         </div>
       </div>
     </div>`;
