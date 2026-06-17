@@ -1124,7 +1124,16 @@ const SKY_POS=[
 // 👇 把下面两行换成你自己的 Supabase 项目 URL 和 anon key
 const SUPABASE_URL = 'https://fmdywtsnqxvwdpfgsddy.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_GPg_4TWiJeW1pOwrH88YfA_so3jnfgV';
-const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Safari-compatible in-memory storage
+const _memStorage={_data:{},getItem(k){return this._data[k]??null},setItem(k,v){this._data[k]=v},removeItem(k){delete this._data[k]}};
+const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    storage: _memStorage,
+    persistSession: false,
+    autoRefreshToken: true,
+    detectSessionInUrl: false
+  }
+});
 
 // 测试连接
 _supabase.auth.getSession().then(({data,error})=>{
