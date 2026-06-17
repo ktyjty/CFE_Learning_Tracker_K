@@ -1125,6 +1125,11 @@ const SKY_POS=[
 const SUPABASE_URL = 'https://fmdywtsnqxvwdpfgsddy.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_GPg_4TWiJeW1pOwrH88YfA_so3jnfgV';
 const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// 测试连接
+_supabase.auth.getSession().then(({data,error})=>{
+  console.log('Supabase session check:', data, error);
+});
 let currentUser = null;
 
 /* ─── Auth UI ───────────────────────────────────────────────── */
@@ -1210,12 +1215,15 @@ async function doSignIn(){
   const btn=document.querySelector('#auth-screen button');
   btn.textContent='Signing in…';btn.disabled=true;
   try{
+    console.log('Attempting sign in for:', email);
     const {data,error}=await _supabase.auth.signInWithPassword({email,password:pw});
-    console.log('SignIn result:',data,error);
+    console.log('SignIn data:', JSON.stringify(data));
+    console.log('SignIn error:', JSON.stringify(error));
     if(error){
       showAuthMsg(error.message);
       btn.textContent='Sign In';btn.disabled=false;
     } else if(data&&data.user){
+      console.log('User found, loading dashboard...');
       currentUser=data.user;
       await loadDBFromCloud();
       hideAuthScreen();
@@ -1223,10 +1231,14 @@ async function doSignIn(){
       rdDash();
       popTop();
       goPage('dashboard',document.querySelector('[data-p="dashboard"]'));
+    } else {
+      console.log('No user in response, data was:', data);
+      showAuthMsg('Login failed — no user returned');
+      btn.textContent='Sign In';btn.disabled=false;
     }
   }catch(e){
-    console.error('SignIn exception:',e);
-    showAuthMsg('Connection error — check console');
+    console.error('SignIn exception:', e.message, e.stack);
+    showAuthMsg('Error: '+e.message);
     btn.textContent='Sign In';btn.disabled=false;
   }
 }
