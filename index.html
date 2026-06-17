@@ -1,0 +1,2459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CFE Learning Tracker</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ═══════════════════════════════════════════════════════════
+   BASE
+═══════════════════════════════════════════════════════════ */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --font:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
+  --fs:13px; /* base font size – slightly bigger */
+  --indigo:#4f46e5;--indigol:#818cf8;
+  --body:#1e293b;--muted:#5a6a82;--hint:#8fa0b8;
+  --card:rgba(255,255,255,0.88);--cardb:rgba(190,205,255,0.30);
+  --border:rgba(175,192,255,0.28);
+  --nc-bg:#fee2e2;--nc-t:#c92222;
+  --rc-bg:#fef3c7;--rc-t:#a64000;
+  --c-bg:#d1fae5; --c-t:#065f46;
+  --cd-bg:#bbf7d0;--cd-t:#047857;
+  --fr:#ede9fe;--fr-t:#5b21b6;
+  --ma:#d1fae5;--ma-t:#065f46;
+  --tx:#fef3c7;--tx-t:#92400e;
+  --au:#dbeafe;--au-t:#1e40af;
+  --sg:#fce7f3;--sg-t:#9d174d;
+  --fi:#e0f2fe;--fi-t:#075985;
+  --topH:54px;
+}
+html,body{height:100%;min-height:100vh;font-family:var(--font);font-size:var(--fs)}
+
+/* ═══════════════════════════════════════════════════════════
+   BACKGROUND – soft lavender-blue with peach cloud tints
+═══════════════════════════════════════════════════════════ */
+body{
+  background:
+    radial-gradient(ellipse 90% 55% at 8% 6%, rgba(255,215,185,0.50) 0%, transparent 58%),
+    radial-gradient(ellipse 65% 45% at 92% 4%, rgba(225,210,255,0.55) 0%, transparent 52%),
+    radial-gradient(ellipse 75% 50% at 50% 97%, rgba(255,205,185,0.38) 0%, transparent 58%),
+    radial-gradient(ellipse 50% 35% at 75% 50%, rgba(210,220,255,0.30) 0%, transparent 55%),
+    linear-gradient(155deg,#e6eaf9 0%,#dce3f7 22%,#ede9fb 48%,#e2eaf8 75%,#dde4f7 100%);
+  background-attachment:fixed
+}
+.app{min-height:100vh;display:flex;flex-direction:column;position:relative}
+
+/* ── CSS cloud shapes (no droplet, cute fluffy look) ────── */
+.clouds-bg{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+/* each .ck is a fluffy cloud made of overlapping circles */
+.ck{position:absolute}
+.ck span{position:absolute;background:rgba(255,255,255,0.60);border-radius:50%;display:block}
+
+/* sparkles */
+.sp{position:fixed;border-radius:50%;background:rgba(167,139,250,0.55);pointer-events:none;z-index:0}
+
+/* ═══════════════════════════════════════════════════════════
+   TOP BAR
+═══════════════════════════════════════════════════════════ */
+.topbar{
+  position:sticky;top:0;z-index:50;height:var(--topH);
+  background:rgba(255,255,255,0.86);
+  border-bottom:0.5px solid var(--border);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  display:flex;align-items:center;gap:10px;padding:0 18px;flex-shrink:0
+}
+.t-logo{
+  font-size:14px;font-weight:700;color:var(--indigo);
+  display:flex;align-items:center;gap:6px;white-space:nowrap;letter-spacing:-0.01em
+}
+.t-greet{flex:1;font-size:12px;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.t-greet strong{color:var(--body);font-weight:600}
+.t-pill{
+  background:rgba(99,102,241,0.08);border:0.5px solid rgba(99,102,241,0.22);
+  border-radius:20px;padding:4px 12px;font-size:11.5px;color:var(--indigo);
+  display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0
+}
+.t-energy{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);white-space:nowrap;flex-shrink:0}
+.ebar{width:58px;height:4px;background:rgba(99,102,241,0.13);border-radius:4px;overflow:hidden}
+.efill{height:100%;background:linear-gradient(90deg,#a5b4fc,#818cf8);border-radius:4px;width:78%}
+.t-time{display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--hint);flex-shrink:0}
+
+/* ═══════════════════════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════════════════════ */
+.layout{position:relative;z-index:2;display:flex;flex:1;height:calc(100vh - var(--topH))}
+
+/* ═══════════════════════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════════════════════ */
+.sidebar{
+  width:182px;flex-shrink:0;
+  background:rgba(255,255,255,0.82);
+  border-right:0.5px solid var(--border);
+  padding:12px 0;display:flex;flex-direction:column;
+  overflow-y:auto;
+  position:sticky;top:var(--topH);height:calc(100vh - var(--topH));
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)
+}
+.sb-head{display:flex;align-items:center;gap:9px;padding:0 13px 12px;border-bottom:0.5px solid var(--border);margin-bottom:6px}
+.sb-name{font-size:14px;font-weight:700;color:var(--body);letter-spacing:-0.01em}
+.sb-sub{font-size:9.5px;color:var(--hint);text-transform:uppercase;letter-spacing:0.05em;margin-top:1px}
+.sb-sec{font-size:9.5px;letter-spacing:0.07em;text-transform:uppercase;color:var(--hint);padding:8px 13px 2px;margin-top:3px;font-weight:700}
+.sbi{display:flex;align-items:center;gap:8px;padding:7px 13px;font-size:12.5px;color:var(--muted);cursor:pointer;transition:all 0.12s;border:none;background:none;width:100%;text-align:left;font-family:var(--font)}
+.sbi:hover{background:rgba(99,102,241,0.06);color:var(--indigo)}
+.sbi.active{background:rgba(99,102,241,0.10);color:var(--indigo);font-weight:700}
+.sbi i{font-size:15px;flex-shrink:0;width:17px;text-align:center}
+.sbi .nbadge{margin-left:auto;background:rgba(99,102,241,0.14);color:var(--indigo);font-size:9px;padding:1px 6px;border-radius:10px;font-weight:700}
+.sb-card{margin:12px 10px 0;background:linear-gradient(135deg,rgba(165,180,252,0.22),rgba(196,181,253,0.16));border:0.5px solid rgba(165,180,252,0.35);border-radius:10px;padding:10px 11px}
+.sb-card-t{font-size:11.5px;font-weight:700;color:var(--indigo);margin-bottom:3px}
+.sb-card-b{font-size:10.5px;color:#6366f1;line-height:1.5}
+
+/* ═══════════════════════════════════════════════════════════
+   CENTER
+═══════════════════════════════════════════════════════════ */
+.center{flex:1;overflow-y:auto;padding:15px 17px;min-width:0}
+.pg{display:none}.pg.active{display:block}
+
+/* ═══════════════════════════════════════════════════════════
+   PILLS & BUTTONS
+═══════════════════════════════════════════════════════════ */
+.pills{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:13px;align-items:center}
+.fp{padding:5px 13px;border-radius:20px;font-size:11.5px;cursor:pointer;border:0.5px solid rgba(175,192,255,0.35);color:var(--muted);background:rgba(255,255,255,0.68);transition:all 0.12s;display:flex;align-items:center;gap:5px;font-family:var(--font);font-weight:500}
+.fp:hover{border-color:#a5b4fc;color:var(--indigo);background:rgba(255,255,255,0.90)}
+.fp.active{background:var(--indigo);border-color:var(--indigo);color:#fff;font-weight:700}
+.fp i{font-size:12px}
+.moon-btn{display:inline-flex;align-items:center;gap:7px;height:31px;padding:0 14px;font-size:12px;font-family:var(--font);cursor:pointer;border-radius:20px;border:0.5px solid rgba(99,102,241,0.28);background:rgba(255,255,255,0.88);color:var(--indigo);font-weight:700;white-space:nowrap;transition:all 0.12s}
+.moon-btn:hover{background:rgba(99,102,241,0.09);border-color:var(--indigol)}
+.moon-btn.pri{background:linear-gradient(135deg,#6366f1,#818cf8);border-color:#6366f1;color:#fff}
+.moon-btn.pri:hover{opacity:0.90}
+.moon-btn.danger{border-color:#fca5a5;color:#dc2626;background:rgba(255,255,255,0.88)}
+
+/* ═══════════════════════════════════════════════════════════
+   CARDS
+═══════════════════════════════════════════════════════════ */
+.card{background:var(--card);border:0.5px solid var(--cardb);border-radius:13px;padding:14px 15px;margin-bottom:12px;backdrop-filter:blur(4px)}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.card-title{font-size:12.5px;font-weight:700;color:var(--body);display:flex;align-items:center;gap:6px}
+.card-title i{color:#818cf8;font-size:15px}
+.sec-lbl{font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--hint);margin-bottom:6px;font-weight:700}
+
+/* ═══════════════════════════════════════════════════════════
+   TABLES
+═══════════════════════════════════════════════════════════ */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;font-weight:700;font-size:10.5px;color:var(--hint);padding:3px 9px 8px;border-bottom:0.5px solid rgba(175,192,255,0.22);white-space:nowrap;letter-spacing:0.02em}
+td{padding:8px 9px;border-bottom:0.5px solid rgba(175,192,255,0.12);color:#2d3d54;vertical-align:middle;text-align:left}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(99,102,241,0.025)}
+.cn{font-weight:700;color:var(--body);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
+
+/* ═══════════════════════════════════════════════════════════
+   BADGES
+═══════════════════════════════════════════════════════════ */
+.rb{display:inline-block;padding:2px 10px;border-radius:10px;font-size:10.5px;font-weight:700}
+.r-nc{background:var(--nc-bg);color:var(--nc-t)}
+.r-rc{background:var(--rc-bg);color:var(--rc-t)}
+.r-c {background:var(--c-bg); color:var(--c-t)}
+.r-cd{background:var(--cd-bg);color:var(--cd-t)}
+.ab{font-size:10px;padding:2px 8px;border-radius:8px;font-weight:700;display:inline-block}
+.ab-fr{background:var(--fr);color:var(--fr-t)}.ab-ma{background:var(--ma);color:var(--ma-t)}
+.ab-tx{background:var(--tx);color:var(--tx-t)}.ab-au{background:var(--au);color:var(--au-t)}
+.ab-sg{background:var(--sg);color:var(--sg-t)}.ab-fi{background:var(--fi);color:var(--fi-t)}
+.achip{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:10px;font-size:10.5px;border:0.5px solid rgba(175,192,255,0.30);color:var(--muted);background:rgba(255,255,255,0.75);white-space:nowrap}
+
+/* ═══════════════════════════════════════════════════════════
+   INLINE BUTTONS
+═══════════════════════════════════════════════════════════ */
+.vbtn{background:rgba(99,102,241,0.07);border:0.5px solid rgba(99,102,241,0.22);color:var(--indigo);font-size:10.5px;padding:3px 11px;border-radius:7px;cursor:pointer;font-family:var(--font);font-weight:700;transition:all 0.12s}
+.vbtn:hover{background:rgba(99,102,241,0.15)}
+.lnk{background:none;border:none;cursor:pointer;color:var(--indigo);font-size:12px;font-family:var(--font);padding:0;font-weight:700;text-align:left}
+.lnk:hover{text-decoration:underline}
+.delbtn{background:none;border:none;cursor:pointer;color:#dc2626;font-size:12px;font-family:var(--font);padding:0;font-weight:700}
+.delbtn:hover{text-decoration:underline}
+
+/* ═══════════════════════════════════════════════════════════
+   DASHBOARD METRIC GRID
+═══════════════════════════════════════════════════════════ */
+.met5{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-bottom:12px}
+.mc{background:rgba(255,255,255,0.85);border:0.5px solid rgba(175,192,255,0.22);border-radius:11px;padding:11px 13px}
+.mc .mv{font-size:23px;font-weight:700;color:var(--body)}
+.mc .ml{font-size:10.5px;color:var(--hint);margin-top:2px}
+.mv.red{color:#dc2626}.mv.amb{color:#b45309}.mv.grn{color:#047857}.mv.blu{color:#1d4ed8}.mv.pur{color:#6d28d9}
+
+.bot3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.mr{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid rgba(175,192,255,0.12);font-size:12px;color:#334155}
+.mr:last-child{border-bottom:none}
+.pgr{display:flex;justify-content:space-between;font-size:12px;color:#334155;padding:5px 0;border-bottom:0.5px solid rgba(175,192,255,0.10)}
+.pgr:last-child{border-bottom:none}
+.pgv{font-weight:700;color:var(--indigo)}
+
+/* ═══════════════════════════════════════════════════════════
+   TOOLBAR
+═══════════════════════════════════════════════════════════ */
+.toolbar{display:flex;gap:6px;align-items:center;margin-bottom:11px;flex-wrap:wrap}
+.toolbar input,.toolbar select{font-size:12px;font-family:var(--font);height:30px;padding:0 9px;border-radius:8px;border:0.5px solid rgba(175,192,255,0.32);background:rgba(255,255,255,0.90);color:#334155}
+.toolbar input:focus,.toolbar select:focus{outline:none;border-color:var(--indigol)}
+
+/* ═══════════════════════════════════════════════════════════
+   EMPTY STATE
+═══════════════════════════════════════════════════════════ */
+.empty{text-align:center;padding:2rem 1rem;color:var(--hint);font-size:12.5px}
+.empty i{font-size:30px;display:block;margin-bottom:8px;color:var(--indigol)}
+
+/* ═══════════════════════════════════════════════════════════
+   BACK BUTTON
+═══════════════════════════════════════════════════════════ */
+.back{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer;background:none;border:none;font-family:var(--font);margin-bottom:11px;padding:0;font-weight:600}
+.back:hover{color:var(--indigo)}
+
+/* ═══════════════════════════════════════════════════════════
+   RIGHT PANEL
+═══════════════════════════════════════════════════════════ */
+.rpanel{
+  width:208px;flex-shrink:0;
+  background:rgba(255,255,255,0.80);border-left:0.5px solid var(--border);
+  padding:14px 13px;overflow-y:auto;display:flex;flex-direction:column;gap:11px;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  position:sticky;top:var(--topH);height:calc(100vh - var(--topH))
+}
+.rpc{background:rgba(255,255,255,0.90);border:0.5px solid var(--cardb);border-radius:10px;padding:11px 12px}
+.rpt{font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--hint);margin-bottom:8px;font-weight:700}
+.evr{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:12px;color:#334155;border-bottom:0.5px solid rgba(175,192,255,0.12)}
+.evr:last-child{border-bottom:none}
+.dr{margin-bottom:7px}
+.dl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);margin-bottom:3px}
+.dbar{height:3px;background:rgba(175,192,255,0.22);border-radius:3px;overflow:hidden}
+.dfi{height:100%;border-radius:3px}
+.df-lo{background:#ef4444}.df-md{background:#f59e0b}.df-hi{background:#10b981}
+.sky-mini-box{width:100%;height:98px;border-radius:8px;position:relative;overflow:hidden;border:0.5px solid rgba(175,192,255,0.2)}
+.trig{width:100%;background:linear-gradient(135deg,#6366f1,#818cf8);border:none;color:#fff;font-size:12px;font-family:var(--font);padding:9px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-weight:700;transition:opacity 0.12s}
+.trig:hover{opacity:0.88}
+.stat2{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.sc{background:rgba(255,255,255,0.70);border-radius:7px;padding:7px 9px}
+.sc .sv{font-size:18px;font-weight:700;color:var(--body)}
+.sc .sl{font-size:9.5px;color:var(--hint);text-transform:uppercase;letter-spacing:0.04em;margin-top:2px}
+
+/* ═══════════════════════════════════════════════════════════
+   RATING KEY FOOTER
+═══════════════════════════════════════════════════════════ */
+.rkey{position:sticky;bottom:0;z-index:10;padding:7px 18px;background:rgba(255,255,255,0.86);border-top:0.5px solid var(--border);backdrop-filter:blur(10px);display:flex;gap:14px;align-items:center;font-size:10.5px;color:var(--muted);flex-wrap:wrap;flex-shrink:0}
+.rki{display:flex;align-items:center;gap:5px}
+
+/* ═══════════════════════════════════════════════════════════
+   MODAL
+═══════════════════════════════════════════════════════════ */
+.moverlay{position:fixed;inset:0;background:rgba(90,105,135,0.28);display:none;align-items:flex-start;justify-content:center;z-index:200;padding:28px 16px 20px;backdrop-filter:blur(3px);overflow-y:auto}
+.moverlay.open{display:flex}
+.mbox{background:#fff;border-radius:14px;padding:22px;width:580px;max-width:96vw;border:0.5px solid rgba(175,192,255,0.40);max-height:88vh;overflow-y:auto;box-shadow:0 12px 50px rgba(99,102,241,0.13)}
+.mbox h2{font-size:15.5px;font-weight:700;color:var(--body);margin-bottom:0;display:flex;align-items:center;gap:8px}
+.frow{margin-bottom:11px}
+.frow label{display:block;font-size:10.5px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em}
+.frow input,.frow select,.frow textarea{width:100%;font-size:12.5px;font-family:var(--font);padding:8px 10px;border:0.5px solid rgba(175,192,255,0.40);border-radius:8px;background:#fafcff;color:var(--body);transition:border-color 0.12s}
+.frow input:focus,.frow select:focus,.frow textarea:focus{outline:none;border-color:var(--indigol)}
+.frow textarea{resize:vertical;min-height:55px}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mfoot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;padding-top:13px;border-top:0.5px solid rgba(175,192,255,0.22)}
+.mfoot button{height:34px;padding:0 16px;font-size:12.5px;font-family:var(--font);cursor:pointer;border-radius:8px;border:0.5px solid rgba(175,192,255,0.30);background:#fff;color:#334155;font-weight:600;transition:all 0.12s}
+.mfoot button.pri{background:var(--indigo);border-color:var(--indigo);color:#fff;font-weight:700}
+.mfoot button.pri:hover{background:#4338ca}
+
+/* AO strip inside modal */
+.ao-strip{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;align-items:center}
+.ao-strip input,.ao-strip select{font-size:11.5px;font-family:var(--font);height:29px;padding:0 8px;border-radius:7px;border:0.5px solid rgba(175,192,255,0.36);background:#fafcff;color:var(--body)}
+.ao-strip button{height:29px;padding:0 12px;font-size:11.5px;font-family:var(--font);cursor:pointer;border-radius:7px;border:0.5px solid rgba(99,102,241,0.28);background:rgba(99,102,241,0.07);color:var(--indigo);font-weight:700}
+.ao-strip button.pri{background:var(--indigo);color:#fff;border-color:var(--indigo)}
+.ao-tbl{font-size:11.5px;width:100%;margin-bottom:6px;border-collapse:collapse}
+.ao-tbl th{font-size:10.5px;color:var(--hint);padding:3px 8px 6px;font-weight:700;border-bottom:0.5px solid rgba(175,192,255,0.2);text-align:left}
+.ao-tbl td{padding:5px 8px;border-bottom:0.5px solid rgba(175,192,255,0.1);vertical-align:middle}
+.ao-tbl tr:last-child td{border-bottom:none}
+.ao-tbl input,.ao-tbl select{font-size:10.5px;font-family:var(--font);border:0.5px solid rgba(175,192,255,0.35);border-radius:5px;padding:3px 6px;background:#fafcff;color:var(--body);width:100%}
+
+/* ═══════════════════════════════════════════════════════════
+   LEARNING SKY – Van Gogh–inspired swirly night
+═══════════════════════════════════════════════════════════ */
+.sky-canvas{
+  width:100%;border-radius:12px;position:relative;overflow:hidden;
+  background:
+    radial-gradient(circle 80px at 83% 9%, rgba(255,240,130,0.75) 0%, rgba(255,210,60,0.35) 40%, transparent 68%),
+    radial-gradient(circle 45px at 80% 8%, rgba(255,255,200,0.50) 0%, transparent 55%),
+    radial-gradient(ellipse 38% 22% at 50% 92%, rgba(255,185,65,0.20) 0%, transparent 58%),
+    radial-gradient(ellipse 65% 42% at 20% 30%, rgba(50,90,200,0.42) 0%, transparent 55%),
+    radial-gradient(ellipse 52% 35% at 65% 50%, rgba(35,72,195,0.35) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 45% at 10% 70%, rgba(15,55,170,0.28) 0%, transparent 60%),
+    radial-gradient(ellipse 45% 28% at 90% 80%, rgba(25,65,180,0.22) 0%, transparent 55%),
+    radial-gradient(ellipse 30% 20% at 45% 15%, rgba(70,110,230,0.25) 0%, transparent 50%),
+    linear-gradient(175deg,#040b1e 0%,#070f30 18%,#0a1848 42%,#0c1f5a 58%,#07102e 80%,#040b1e 100%);
+}
+.sky-canvas::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  /* Van Gogh swirl blobs — represent the churning sky masses */
+  background-image:
+    radial-gradient(ellipse 160px 100px at 18% 22%, rgba(65,115,245,0.28) 0%, rgba(40,85,210,0.10) 60%, transparent 100%),
+    radial-gradient(ellipse 120px 75px at 35% 10%, rgba(95,145,255,0.22) 0%, transparent 100%),
+    radial-gradient(ellipse 110px 70px at 60% 22%, rgba(52,102,220,0.24) 0%, transparent 100%),
+    radial-gradient(ellipse 85px 58px at 78% 32%, rgba(72,132,230,0.20) 0%, transparent 100%),
+    radial-gradient(ellipse 100px 65px at 40% 50%, rgba(42,92,210,0.22) 0%, transparent 100%),
+    radial-gradient(ellipse 75px 52px at 15% 60%, rgba(62,112,240,0.18) 0%, transparent 100%),
+    radial-gradient(ellipse 125px 62px at 55% 75%, rgba(32,82,200,0.20) 0%, transparent 100%),
+    radial-gradient(ellipse 80px 48px at 85% 65%, rgba(48,98,218,0.18) 0%, transparent 100%),
+    radial-gradient(ellipse 90px 55px at 25% 80%, rgba(55,100,225,0.16) 0%, transparent 100%),
+    radial-gradient(ellipse 70px 45px at 70% 88%, rgba(38,88,205,0.15) 0%, transparent 100%);
+}
+.sky-canvas::after{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  /* Wavy brush-stroke lines mimicking Van Gogh's painting technique */
+  background-image:
+    repeating-linear-gradient(6deg,  transparent 0px, transparent 10px, rgba(85,145,255,0.09) 10px, rgba(85,145,255,0.09) 12px),
+    repeating-linear-gradient(-4deg, transparent 0px, transparent 14px, rgba(65,120,210,0.08) 14px, rgba(65,120,210,0.08) 16px),
+    repeating-linear-gradient(13deg, transparent 0px, transparent 18px, rgba(105,160,255,0.07) 18px, rgba(105,160,255,0.07) 20px),
+    repeating-linear-gradient(-10deg,transparent 0px, transparent 24px, rgba(50,100,190,0.06) 24px, rgba(50,100,190,0.06) 26px),
+    repeating-linear-gradient(20deg, transparent 0px, transparent 32px, rgba(75,135,225,0.055)32px, rgba(75,135,225,0.055)34px),
+    repeating-linear-gradient(-18deg,transparent 0px, transparent 40px, rgba(60,110,200,0.05) 40px, rgba(60,110,200,0.05) 42px);
+  mix-blend-mode:screen;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ANALYTICS BAR
+═══════════════════════════════════════════════════════════ */
+.ana-bar-row{display:grid;grid-template-columns:60px 1fr 120px;align-items:center;gap:10px;margin-bottom:10px;font-size:12px}
+
+/* ═══ Hide toggle ══════════════════════════════════════════ */
+.score-hidden .score-cell,
+.score-hidden .nc-cell,
+.hide-score-col{transition:all .25s}
+.mc-hidden{filter:blur(8px);pointer-events:none;user-select:none}
+
+/* ═══ Oracle Card Draw ════════════════════════════════════= */
+.oracle-section{margin-bottom:12px}
+.oracle-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.oracle-top-title{font-size:12px;font-weight:700;color:var(--body);display:flex;align-items:center;gap:6px}
+.card-deck{display:flex;gap:12px;perspective:1200px;justify-content:stretch;flex-wrap:nowrap}
+.oracle-card{
+  width:170px;height:240px;cursor:pointer;position:relative;
+  border-radius:14px;flex-shrink:0;flex:1 1 150px;max-width:220px;
+  transform-style:preserve-3d;transition:transform .55s cubic-bezier(.4,0,.2,1),box-shadow .25s;
+}
+.oracle-card:hover{transform:translateY(-6px) rotateY(4deg);box-shadow:0 14px 40px rgba(79,70,229,0.22)}
+.oracle-card.flipped{transform:rotateY(180deg)}
+.oracle-card.flipped:hover{transform:rotateY(180deg) translateY(-3px)}
+.card-face{
+  position:absolute;inset:0;border-radius:14px;backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;overflow:hidden
+}
+.card-back{
+  background:linear-gradient(165deg,#0d1b3e 0%,#112258 35%,#1a2f72 60%,#0e1c42 100%);
+  border:1.5px solid rgba(165,180,255,0.35);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px;
+}
+.card-back-inner{width:100%;height:100%;border:1px solid rgba(165,180,255,0.2);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:8px 6px;position:relative;overflow:hidden}
+.card-front{
+  transform:rotateY(180deg);
+  background:linear-gradient(165deg,#0c1535 0%,#101e52 40%,#182d6a 70%,#0c1535 100%);
+  border:1.5px solid rgba(165,180,255,0.4);
+  display:flex;flex-direction:column;padding:0;
+}
+.card-front-inner{display:flex;flex-direction:column;height:100%;width:100%;padding:7px;position:relative;overflow:hidden}
+.card-type-badge{
+  font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;
+  color:rgba(255,255,255,0.55);text-align:center;margin-bottom:4px;
+  border-bottom:0.5px solid rgba(165,180,255,0.2);padding-bottom:4px
+}
+.card-moon-art{flex:1;display:flex;align-items:center;justify-content:center;position:relative}
+.card-msg-box{
+  background:rgba(0,0,0,0.42);border:0.5px solid rgba(165,180,255,0.30);
+  border-radius:8px;padding:9px 10px;margin-top:5px;
+  font-size:11.5px;line-height:1.55;color:#fff;text-align:center;
+  font-weight:700;letter-spacing:0.01em
+}
+.card-msg-bonus{
+  font-size:10px;color:rgba(200,212,255,0.90);text-align:center;margin-top:5px;
+  line-height:1.45;font-weight:600;
+  border-top:0.5px solid rgba(165,180,255,0.18);padding-top:5px
+}
+.oracle-shuffle-btn{
+  display:flex;align-items:center;gap:6px;height:29px;padding:0 12px;
+  font-size:11px;font-family:var(--font);cursor:pointer;border-radius:20px;
+  border:0.5px solid rgba(99,102,241,0.3);background:rgba(255,255,255,0.82);
+  color:var(--indigo);font-weight:700;transition:all .12s
+}
+.oracle-shuffle-btn:hover{background:rgba(99,102,241,0.1)}
+.star-twinkle{animation:twinkle 2.5s ease-in-out infinite}
+@keyframes twinkle{0%,100%{opacity:.3}50%{opacity:1}}
+.constellation-line{stroke:rgba(165,180,255,0.25);stroke-width:0.5}
+
+/* ═══════════════════════════════════════════════════════════
+   TOPIC REVIEW
+═══════════════════════════════════════════════════════════ */
+.rev-card{background:var(--card);border:0.5px solid var(--cardb);border-radius:12px;padding:12px 14px;margin-bottom:9px}
+.rev-card.flag-priority{border-left:3px solid #ef4444}
+.rev-card.flag-watch{border-left:3px solid #f59e0b}
+.rev-card.flag-strong{border-left:3px solid #10b981}
+.rev-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.rev-title{font-size:13px;font-weight:700;color:var(--body)}
+.rev-stats{font-size:10.5px;color:var(--hint);margin-left:auto;display:flex;gap:8px;align-items:center;white-space:nowrap}
+.rev-flag-select{font-size:11px;font-family:var(--font);height:28px;padding:0 8px;border-radius:7px;border:0.5px solid rgba(175,192,255,0.35);background:#fafcff;color:var(--body)}
+.rev-comment{width:100%;font-size:12px;font-family:var(--font);border:0.5px solid rgba(175,192,255,0.32);border-radius:8px;padding:7px 9px;min-height:46px;resize:vertical;background:#fafcff;color:var(--body);margin-top:6px}
+.rev-comment:focus{outline:none;border-color:var(--indigol)}
+.rev-aos{margin-top:8px;padding-top:8px;border-top:0.5px solid rgba(175,192,255,0.14);display:flex;flex-direction:column;gap:5px}
+.rev-ao-row{display:flex;align-items:center;gap:7px;font-size:11.5px;color:#334155;flex-wrap:wrap}
+.rev-ao-row .rev-case{color:var(--indigo);font-weight:700;cursor:pointer;background:none;border:none;padding:0;font-size:11.5px;font-family:var(--font)}
+.rev-ao-row .rev-case:hover{text-decoration:underline}
+.rev-empty-aos{font-size:11px;color:var(--hint);margin-top:6px}
+
+/* ═══════════════════════════════════════════════════════════
+   NOTES page
+═══════════════════════════════════════════════════════════ */
+.note-card{background:var(--card);border:0.5px solid var(--cardb);border-radius:13px;padding:15px;margin-bottom:12px}
+.note-card textarea{width:100%;font-size:12.5px;font-family:var(--font);border:0.5px solid rgba(175,192,255,0.32);border-radius:8px;padding:9px;min-height:80px;resize:vertical;color:var(--body);background:#fafcff}
+.note-card textarea:focus{outline:none;border-color:var(--indigol)}
+
+/* ═══════════════════════════════════════════════════════════
+   SETTINGS page
+═══════════════════════════════════════════════════════════ */
+.setting-row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:0.5px solid rgba(175,192,255,0.12);font-size:12.5px;color:var(--body)}
+.setting-row:last-child{border-bottom:none}
+.setting-row label{font-weight:600;color:var(--body)}
+.setting-row small{display:block;font-size:10.5px;color:var(--hint);margin-top:2px;font-weight:400}
+.setting-row input,.setting-row select,.setting-row textarea{font-size:12px;font-family:var(--font);padding:6px 9px;border:0.5px solid rgba(175,192,255,0.35);border-radius:7px;background:#fafcff;color:var(--body);min-width:200px}
+.setting-row input:focus,.setting-row select:focus,.setting-row textarea:focus{outline:none;border-color:var(--indigol)}
+.setting-row textarea{min-height:55px;resize:vertical}
+.tag-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.tag-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:12px;font-size:11px;background:rgba(99,102,241,0.09);color:var(--indigo);border:0.5px solid rgba(99,102,241,0.2)}
+.tag-chip button{background:none;border:none;cursor:pointer;color:var(--hint);font-size:13px;line-height:1;padding:0}
+.tag-chip button:hover{color:#dc2626}
+
+/* ═══════════════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════════════ */
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(40px);background:#1e293b;color:#fff;font-size:12.5px;font-weight:600;padding:9px 20px;border-radius:20px;z-index:300;opacity:0;transition:all 0.28s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════════════════════ */
+@media(max-width:980px){.rpanel{display:none}}
+@media(max-width:700px){
+  .bot3{grid-template-columns:1fr 1fr}
+  .met5{grid-template-columns:repeat(3,1fr);gap:7px}
+  .t-pill,.t-energy,.t-time{display:none}
+}
+@media(max-width:520px){
+  .sidebar{width:46px}
+  .sb-head .sb-name,.sb-head .sb-sub,.sb-sec,.sbi span,.sb-card{display:none}
+  .sbi{padding:10px;justify-content:center}
+  .bot3{grid-template-columns:1fr}
+  .met5{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ── Floating cloud shapes ──────────────────────────────── -->
+<div class="clouds-bg" id="clouds-bg"></div>
+
+<!-- sparkles -->
+<div class="sp" style="width:3px;height:3px;top:11%;left:33%;position:fixed"></div>
+<div class="sp" style="width:2px;height:2px;top:6%;left:51%;position:fixed"></div>
+<div class="sp" style="width:2.5px;height:2.5px;top:17%;left:79%;position:fixed"></div>
+<div class="sp" style="width:2px;height:2px;top:24%;left:61%;position:fixed"></div>
+<div class="sp" style="width:3px;height:3px;top:4%;left:87%;position:fixed"></div>
+
+<!-- ── TOP BAR ───────────────────────────────────────────── -->
+<div class="topbar">
+  <div class="t-logo">
+    <!-- moon + tiny cloud beside logo -->
+    <svg width="26" height="24" viewBox="0 0 26 24" fill="none" aria-hidden="true">
+      <!-- moon -->
+      <path d="M13 3C13 3 8.5 7 8.5 11C8.5 13.5 10.5 15.5 13 15.5C15.5 15.5 17.5 13.5 17.5 11C17.5 7 13 3 13 3Z" fill="#818cf8" opacity=".82"/>
+      <circle cx="18.5" cy="6" r="2.2" fill="#fcd34d"/>
+      <!-- small cloud beside moon -->
+      <ellipse cx="5" cy="13" rx="4.5" ry="3" fill="rgba(255,255,255,0.75)"/>
+      <ellipse cx="3" cy="14" rx="3" ry="2.2" fill="rgba(255,255,255,0.65)"/>
+      <ellipse cx="7" cy="13.5" rx="3" ry="2" fill="rgba(255,255,255,0.68)"/>
+    </svg>
+    CFE Learning Tracker
+  </div>
+  <div class="t-greet">Good morning, <strong id="top-greet-name">future CPA</strong> — <span id="top-greet-msg">small steps today, massive impact tomorrow</span></div>
+  <div class="t-pill">
+    <i class="ti ti-bolt" style="font-size:12px"></i>
+    <span id="top-focus">Focus: outline one AO — 5 min</span>
+  </div>
+  <div class="t-energy">
+    <i class="ti ti-flame" style="color:#a78bfa;font-size:14px"></i>
+    <div class="ebar"><div class="efill"></div></div>
+    <span style="color:var(--indigo);font-weight:700">78%</span>
+  </div>
+  <div class="t-time"><i class="ti ti-clock" style="font-size:13px"></i><span id="top-time">42 min</span></div>
+  <button class="moon-btn" onclick="signOut()" id="signout-btn" style="font-size:11px;display:none"><i class="ti ti-logout"></i> Sign out</button>
+  <!-- cute cloud + sun icon (no droplet) -->
+  <svg width="32" height="26" viewBox="0 0 32 26" fill="none" aria-hidden="true" style="flex-shrink:0;margin-left:4px">
+    <circle cx="25" cy="5" r="3.5" fill="#fcd34d" opacity=".88"/>
+    <ellipse cx="15" cy="13" rx="11" ry="7" fill="rgba(200,210,255,0.72)"/>
+    <ellipse cx="10" cy="15" rx="7.5" ry="5.5" fill="rgba(210,220,255,0.85)"/>
+    <ellipse cx="20" cy="14" rx="7" ry="5" fill="rgba(205,215,255,0.80)"/>
+    <ellipse cx="15" cy="16.5" rx="10" ry="5" fill="rgba(255,255,255,0.90)"/>
+  </svg>
+</div>
+
+<div class="layout">
+
+<!-- ── SIDEBAR ───────────────────────────────────────────── -->
+<div class="sidebar">
+  <div class="sb-head">
+    <svg width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true">
+      <path d="M15 4C15 4 10 9 10 13.5C10 16.3 12.4 18.5 15 18.5C17.6 18.5 20 16.3 20 13.5C20 9 15 4 15 4Z" fill="#818cf8" opacity=".85"/>
+      <circle cx="21" cy="7.5" r="2.5" fill="#fcd34d"/>
+      <!-- tiny cloud puff by logo -->
+      <ellipse cx="7" cy="18" rx="5" ry="3.2" fill="rgba(165,180,252,0.50)"/>
+      <ellipse cx="5" cy="19" rx="3.5" ry="2.5" fill="rgba(165,180,252,0.40)"/>
+      <ellipse cx="9" cy="18.5" rx="3.5" ry="2.3" fill="rgba(165,180,252,0.42)"/>
+    </svg>
+    <div>
+      <div class="sb-name">CFE Tracker</div>
+      <div class="sb-sub">Study companion</div>
+    </div>
+  </div>
+
+  <div class="sb-sec">Study</div>
+  <button class="sbi active" data-p="dashboard" onclick="goPage('dashboard',this)"><i class="ti ti-layout-dashboard"></i><span>Dashboard</span></button>
+  <button class="sbi" data-p="cases" onclick="goPage('cases',this)"><i class="ti ti-folder"></i><span>Cases</span></button>
+  <button class="sbi" data-p="aos" onclick="goPage('aos',this)"><i class="ti ti-list-check"></i><span>AOs</span></button>
+  <button class="sbi" data-p="import" onclick="goPage('import',this)"><i class="ti ti-arrows-exchange"></i><span>Import / Export</span></button>
+
+  <div class="sb-sec" style="margin-top:6px">Insights</div>
+  <button class="sbi" data-p="sky" onclick="goPage('sky',this)"><i class="ti ti-stars"></i><span>Learning sky</span></button>
+  <button class="sbi" data-p="analytics" onclick="goPage('analytics',this)"><i class="ti ti-chart-bar"></i><span>Analytics</span></button>
+  <button class="sbi" data-p="review" onclick="goPage('review',this)"><i class="ti ti-flag"></i><span>Topic review</span></button>
+
+  <div class="sb-sec" style="margin-top:6px">Setup</div>
+  <button class="sbi" data-p="notes" onclick="goPage('notes',this)"><i class="ti ti-notebook"></i><span>Notes & resources</span></button>
+  <button class="sbi" data-p="settings" onclick="goPage('settings',this)"><i class="ti ti-settings"></i><span>Settings</span></button>
+
+  <div class="sb-card">
+    <div class="sb-card-t" id="sb-card-title">Keep going! ✨</div>
+    <div class="sb-card-b" id="sb-card-body">Progress is progress, no matter how small. You're building mastery.</div>
+  </div>
+</div>
+
+<!-- ── CENTER PAGES ───────────────────────────────────────── -->
+<div class="center">
+
+<!-- ═══════════ DASHBOARD ════════════════════════════════ -->
+<div id="page-dashboard" class="pg active">
+  <div class="pills">
+    <button class="fp active" onclick="setF('all',this)"><i class="ti ti-layout-grid"></i>All</button>
+    <button class="fp" onclick="setF('FR',this)"><i class="ti ti-book-2"></i>FR</button>
+    <button class="fp" onclick="setF('MA',this)"><i class="ti ti-chart-bar"></i>MA</button>
+    <button class="fp" onclick="setF('Tax',this)"><i class="ti ti-file-invoice"></i>Tax</button>
+    <button class="fp" onclick="setF('Audit',this)"><i class="ti ti-shield-check"></i>Audit</button>
+    <button class="fp" onclick="setF('SG',this)"><i class="ti ti-sitemap"></i>S&amp;G</button>
+    <button class="fp" onclick="setF('Finance',this)"><i class="ti ti-coin"></i>Finance</button>
+    <button class="moon-btn pri" style="margin-left:auto" onclick="openAdd()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+        <path d="M7 1.5C7 1.5 4.3 4.2 4.3 6.5C4.3 8 5.5 9.2 7 9.2C8.5 9.2 9.7 8 9.7 6.5C9.7 4.2 7 1.5 7 1.5Z" fill="rgba(255,255,255,.90)"/>
+        <circle cx="10.5" cy="3.2" r="1.4" fill="#fcd34d"/>
+      </svg>
+      Add case
+    </button>
+  </div>
+
+  <!-- Active tracker -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true"><path d="M7.5 1L9.2 5.5H14L10.4 8.1L11.8 12.5L7.5 9.8L3.2 12.5L4.6 8.1L1 5.5H5.8Z" fill="#818cf8"/></svg>
+        Active tracker — not yet debriefed
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span id="act-cnt" style="font-size:11px;color:var(--hint)"></span>
+        <!-- Cloud hide button -->
+        <button id="hide-scores-btn" onclick="toggleScoreHide()" title="Hide / show scores and NA/NC" style="background:none;border:none;cursor:pointer;padding:2px;display:flex;align-items:center;opacity:0.7;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">
+          <svg id="hide-cloud-svg" width="32" height="22" viewBox="0 0 32 22" fill="none">
+            <ellipse cx="16" cy="12" rx="11" ry="7" fill="rgba(165,180,252,0.55)"/>
+            <ellipse cx="11" cy="14" rx="7.5" ry="5.5" fill="rgba(175,190,255,0.65)"/>
+            <ellipse cx="21" cy="13.5" rx="7" ry="5" fill="rgba(170,185,255,0.60)"/>
+            <ellipse cx="16" cy="15.5" rx="10" ry="5" fill="rgba(220,225,255,0.80)"/>
+            <line x1="12" y1="19.5" x2="11" y2="21.5" stroke="rgba(165,180,252,0.6)" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="16" y1="20" x2="15" y2="22" stroke="rgba(165,180,252,0.6)" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="20" y1="19.5" x2="19" y2="21.5" stroke="rgba(165,180,252,0.6)" stroke-width="1.5" stroke-linecap="round"/>
+            <circle cx="25" cy="5" r="3" fill="rgba(252,211,77,0.70)"/>
+            <!-- eye (visible state indicator) -->
+            <g id="hide-eye-icon">
+              <circle cx="16" cy="9" r="1.5" fill="rgba(99,102,241,0.7)"/>
+              <path d="M11 9 Q16 5 21 9 Q16 13 11 9Z" stroke="rgba(99,102,241,0.7)" stroke-width="1" fill="none"/>
+            </g>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table style="table-layout:fixed;min-width:640px">
+        <colgroup><col style="width:6%"><col style="width:18%"><col style="width:18%"><col style="width:9%"><col style="width:8%"><col style="width:7%"><col style="width:16%"><col style="width:10%"><col style="width:8%"></colgroup>
+        <thead><tr><th></th><th>Case / org.</th><th>AO focus</th><th>Score</th><th>NA/NC</th><th>C</th><th>Spaced action</th><th>Date</th><th>Action</th></tr></thead>
+        <tbody id="dash-tb"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 5-metric row -->
+  <div class="met5">
+    <div class="mc"><div class="mv red" id="m-nc">0</div><div class="ml">NA / NC</div></div>
+    <div class="mc"><div class="mv amb" id="m-rc">0</div><div class="ml">RC</div></div>
+    <div class="mc"><div class="mv grn" id="m-cc">0</div><div class="ml">C / CD</div></div>
+    <div class="mc"><div class="mv blu" id="m-avgc">—</div><div class="ml">Avg % C per case</div></div>
+    <div class="mc"><div class="mv pur" id="m-avgrc">—</div><div class="ml">Avg % RC+ per case</div></div>
+  </div>
+
+  <!-- Bottom 2 cards: weakest areas + progress -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+    <div class="card" style="margin-bottom:0">
+      <div class="card-title" style="font-size:12px;margin-bottom:9px"><i class="ti ti-alert-triangle" style="color:#f59e0b"></i>Weakest areas</div>
+      <div id="weak-l"></div>
+    </div>
+    <div class="card" style="margin-bottom:0">
+      <div class="card-title" style="font-size:12px;margin-bottom:9px"><i class="ti ti-chart-bar" style="color:#10b981"></i>Progress dashboard</div>
+      <div id="prog-l"></div>
+    </div>
+  </div>
+
+  <!-- Oracle card section — full width, 4 cards in a row -->
+  <div class="card oracle-section" id="oracle-section-card" style="margin-bottom:12px">
+    <div class="oracle-top">
+      <div class="oracle-top-title">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1L8.5 4.8H12.5L9.3 7.1L10.5 11L7 8.8L3.5 11L4.7 7.1L1.5 4.8H5.5Z" fill="#fcd34d"/></svg>
+        Oracle of the CFE
+      </div>
+      <button class="oracle-shuffle-btn" onclick="shuffleOracle()">
+        <i class="ti ti-arrows-shuffle"></i>Shuffle
+      </button>
+    </div>
+    <div class="card-deck" id="oracle-deck"></div>
+    <div style="font-size:10px;color:var(--hint);text-align:center;margin-top:8px">Click a card to reveal your fate ✨</div>
+  </div>
+
+  <!-- Recent cases -->
+  <div style="margin-top:13px">
+    <div class="sec-lbl">Recent cases</div>
+    <div id="recent-c"></div>
+  </div>
+</div>
+
+<!-- ═══════════ CASES ════════════════════════════════════ -->
+<div id="page-cases" class="pg">
+  <div class="toolbar">
+    <input id="cs-q" type="text" placeholder="🔍 Search cases…" style="width:165px" oninput="rCases()">
+    <select id="cs-day" onchange="rCases()"><option value="">All days</option><option>Day 1</option><option>Day 2</option><option>Day 3</option></select>
+    <select id="cs-att" onchange="rCases()"><option value="">All attempts</option><option value="First">First attempt</option><option value="Redo">Redo</option></select>
+    <select id="cs-deb" onchange="rCases()"><option value="">All debrief</option><option value="Yes">Debriefed ✓</option><option value="No">Not debriefed</option></select>
+    <button class="moon-btn pri" onclick="openAdd()">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true"><path d="M6.5 1C6.5 1 4 3.5 4 5.8C4 7.1 5.1 8.2 6.5 8.2C7.9 8.2 9 7.1 9 5.8C9 3.5 6.5 1 6.5 1Z" fill="rgba(255,255,255,.9)"/><circle cx="10" cy="3" r="1.3" fill="#fcd34d"/></svg>
+      Add case
+    </button>
+  </div>
+  <div class="card tbl-wrap">
+    <table style="table-layout:fixed;min-width:660px">
+      <colgroup><col style="width:20%"><col style="width:9%"><col style="width:7%"><col style="width:10%"><col style="width:8%"><col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:9%"><col style="width:16%"></colgroup>
+      <thead><tr><th>Case name</th><th>Date</th><th>Day</th><th>Attempt</th><th>Standard</th><th>NA/NC</th><th>RC</th><th>C/CD</th><th>Debriefed</th><th>Actions</th></tr></thead>
+      <tbody id="cases-tb"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════ AOs ══════════════════════════════════════ -->
+<div id="page-aos" class="pg">
+  <div class="toolbar">
+    <select id="ao-area" onchange="rAOs()"><option value="">All areas</option><option>FR</option><option>MA</option><option>Tax</option><option>Audit</option><option>SG</option><option>Finance</option></select>
+    <select id="ao-res" onchange="rAOs()"><option value="">All results</option><option>NA/NC</option><option>RC</option><option>C</option><option>CD</option></select>
+    <select id="ao-deb" onchange="rAOs()"><option value="">All debrief</option><option value="Yes">Debriefed</option><option value="No">Not debriefed</option></select>
+    <input id="ao-q" type="text" placeholder="🔍 Search AOs…" style="width:165px" oninput="rAOs()">
+  </div>
+  <div class="card tbl-wrap">
+    <table style="table-layout:fixed;min-width:600px">
+      <colgroup><col style="width:16%"><col style="width:20%"><col style="width:9%"><col style="width:15%"><col style="width:9%"><col style="width:9%"><col style="width:22%"></colgroup>
+      <thead><tr><th>Case</th><th>AO title</th><th>Area</th><th>Topic</th><th>Result</th><th>Debriefed</th><th>Comment</th></tr></thead>
+      <tbody id="aos-tb"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════ DETAIL ═══════════════════════════════════ -->
+<div id="page-detail" class="pg">
+  <button class="back" onclick="goPage('cases',document.querySelector('[data-p=cases]'))">
+    <i class="ti ti-arrow-left"></i> Back to cases
+  </button>
+  <div id="det-c"></div>
+</div>
+
+<!-- ═══════════ IMPORT / EXPORT ══════════════════════════ -->
+<div id="page-import" class="pg">
+  <div class="card">
+    <div class="card-title" style="font-size:13px;margin-bottom:9px"><i class="ti ti-download" style="color:#818cf8"></i>Export data</div>
+    <p style="font-size:12.5px;color:var(--muted);margin-bottom:12px">Download all cases and AOs as a CSV file. Opens in Excel or Google Sheets, and can be re-imported later without duplicating records.</p>
+    <button class="moon-btn pri" onclick="doExport()"><i class="ti ti-download"></i>Export to CSV</button>
+  </div>
+  <div class="card">
+    <div class="card-title" style="font-size:13px;margin-bottom:9px"><i class="ti ti-upload" style="color:#818cf8"></i>Import from CSV</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:7px"><strong>Required columns:</strong> <code style="font-size:10px;background:#f1f5f9;padding:2px 6px;border-radius:4px">case_name, case_date, day, attempt, revised, debriefed, ao_title, area, topic, result, comment, ao_debriefed</code></p>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:11px"><strong>Optional — AO notes (what's needed for C/RC):</strong> <code style="font-size:10px;background:#f1f5f9;padding:2px 6px;border-radius:4px">ao_need_for_c, ao_gap_notes, ao_key_points</code> <span style="font-size:10.5px;color:var(--hint)">(free text per AO)</span><br><span style="font-size:10.5px;color:var(--hint)">Re-uploading matches on case name + AO title — no duplicates created.</span></p>
+    <input type="file" id="imp-f" accept=".csv" style="font-size:12px;font-family:var(--font)" onchange="doImport(this)">
+    <div id="imp-s" style="margin-top:10px;font-size:12px;color:var(--muted)"></div>
+  </div>
+  <div class="card">
+    <div class="card-title" style="font-size:13px;margin-bottom:9px"><i class="ti ti-trash" style="color:#ef4444"></i>Reset all data</div>
+    <p style="font-size:12.5px;color:var(--muted);margin-bottom:12px">Permanently delete everything from this browser. Export a backup first.</p>
+    <button class="moon-btn danger" onclick="resetAll()"><i class="ti ti-trash"></i>Reset all data</button>
+  </div>
+</div>
+
+<!-- ═══════════ LEARNING SKY ═════════════════════════════ -->
+<div id="page-sky" class="pg">
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true"><path d="M7.5 1L9.2 5.5H14L10.4 8.1L11.8 12.5L7.5 9.8L3.2 12.5L4.6 8.1L1 5.5H5.8Z" fill="#fcd34d"/></svg>
+        Your learning sky
+      </div>
+      <span style="font-size:11px;color:var(--hint)" id="sky-count"></span>
+    </div>
+    <p style="font-size:12.5px;color:var(--muted);margin-bottom:12px">Every AO you master (mark <strong style="color:#047857">CD</strong>) lights up permanently as a gold star against the night sky. Keep studying until your sky is full ✨</p>
+    <div class="sky-canvas" id="sky-full" style="height:340px"></div>
+    <div style="display:flex;gap:22px;margin-top:10px;font-size:11px;color:var(--hint)">
+      <span>★ gold glow = mastered (CD)</span>
+      <span>★ dim blue = attempted</span>
+      <span>· = not started</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ ANALYTICS ═════════════════════════════════ -->
+<div id="page-analytics" class="pg">
+  <div class="card">
+    <div class="card-title" style="margin-bottom:13px"><i class="ti ti-chart-bar" style="color:#818cf8"></i>Performance by competency area</div>
+    <div style="font-size:11px;color:var(--hint);display:flex;gap:14px;margin-bottom:11px">
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#fca5a5;margin-right:4px"></span>NA/NC</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#fcd34d;margin-right:4px"></span>RC</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#6ee7b7;margin-right:4px"></span>C / CD</span>
+    </div>
+    <div id="ana-bars"></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div class="card" style="margin-bottom:0">
+      <div class="card-title" style="font-size:12px;margin-bottom:9px"><i class="ti ti-trending-up" style="color:#10b981"></i>Strongest topics <span style="font-size:10px;color:var(--hint);font-weight:400">— top 5 by % C/CD</span></div>
+      <div id="ana-top"></div>
+    </div>
+    <div class="card" style="margin-bottom:0">
+      <div class="card-title" style="font-size:12px;margin-bottom:9px"><i class="ti ti-trending-down" style="color:#ef4444"></i>Weakest topics <span style="font-size:10px;color:var(--hint);font-weight:400">— top 5 by % NA/NC</span></div>
+      <div id="ana-weak"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><i class="ti ti-list-details" style="color:#818cf8"></i>Topic breakdown</div>
+      <span style="font-size:11px;color:var(--hint)" id="ana-topic-count"></span>
+    </div>
+    <div class="tbl-wrap">
+      <table style="table-layout:fixed;min-width:520px">
+        <colgroup><col style="width:24%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:24%"></colgroup>
+        <thead><tr><th>Topic</th><th>Area</th><th>Attempts</th><th>Avg score %</th><th>% C/CD</th><th>Result mix</th></tr></thead>
+        <tbody id="ana-topic-tb"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════ TOPIC REVIEW ═══════════════════════════════ -->
+<div id="page-review" class="pg">
+  <div class="toolbar">
+    <select id="rev-area" onchange="rReview()"><option value="">All areas</option><option>FR</option><option>MA</option><option>Tax</option><option>Audit</option><option>SG</option><option>Finance</option></select>
+    <select id="rev-flag" onchange="rReview()">
+      <option value="">All flags</option>
+      <option value="priority">🚩 Priority</option>
+      <option value="watch">👀 Watch</option>
+      <option value="strong">⭐ Strong</option>
+      <option value="none">No flag</option>
+    </select>
+    <select id="rev-attempted" onchange="rReview()">
+      <option value="">Attempted + not started</option>
+      <option value="yes">Attempted only</option>
+      <option value="no">Not started only</option>
+    </select>
+    <input id="rev-q" type="text" placeholder="🔍 Search topics…" style="width:165px" oninput="rReview()">
+  </div>
+  <div id="review-list"></div>
+</div>
+
+<!-- ═══════════ NOTES & RESOURCES ════════════════════════ -->
+<div id="page-notes" class="pg">
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><i class="ti ti-notebook" style="color:#818cf8"></i>My study notes</div>
+      <button class="moon-btn pri" onclick="saveNotes()"><i class="ti ti-device-floppy"></i>Save notes</button>
+    </div>
+    <div class="frow" style="margin-bottom:0">
+      <label>Free-form notes (supports any text)</label>
+      <textarea id="notes-ta" style="min-height:160px;font-size:12.5px;width:100%;font-family:var(--font);padding:10px;border:0.5px solid rgba(175,192,255,0.35);border-radius:8px;background:#fafcff;color:var(--body);resize:vertical" placeholder="Write anything here — case observations, exam tips, tricky topics, formulas…"></textarea>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><i class="ti ti-link" style="color:#818cf8"></i>Useful resources</div>
+      <button class="moon-btn pri" onclick="addResource()"><i class="ti ti-plus"></i>Add resource</button>
+    </div>
+    <div id="res-list"></div>
+    <div id="res-add" style="display:none;margin-top:10px">
+      <div class="fgrid" style="margin-bottom:8px">
+        <div class="frow" style="margin-bottom:0"><label>Title</label><input id="res-title" type="text" placeholder="e.g. CPA Canada Standards"></div>
+        <div class="frow" style="margin-bottom:0"><label>URL (optional)</label><input id="res-url" type="text" placeholder="https://…"></div>
+      </div>
+      <div class="frow"><label>Description</label><input id="res-desc" type="text" placeholder="Short description…"></div>
+      <div style="display:flex;gap:7px">
+        <button class="moon-btn pri" onclick="saveResource()"><i class="ti ti-check"></i>Save</button>
+        <button class="moon-btn" onclick="document.getElementById('res-add').style.display='none'">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SETTINGS ══════════════════════════════════ -->
+<div id="page-settings" class="pg">
+  <div class="card">
+    <div class="card-title" style="margin-bottom:12px"><i class="ti ti-palette" style="color:#818cf8"></i>Personalise</div>
+    <div class="setting-row">
+      <div><label>Your name</label><small>Shown in the top greeting</small></div>
+      <input id="set-name" type="text" placeholder="future CPA" value="">
+    </div>
+    <div class="setting-row">
+      <div><label>Morning message</label><small>Motivational text in top bar</small></div>
+      <input id="set-msg" type="text" placeholder="small steps today, massive impact tomorrow" value="">
+    </div>
+    <div class="setting-row">
+      <div><label>Focus boost text</label><small>Shown in the focus pill</small></div>
+      <input id="set-focus" type="text" placeholder="Focus: outline one AO — 5 min" value="">
+    </div>
+    <div class="setting-row">
+      <div><label>Keep going card title</label><small>Sidebar motivation card</small></div>
+      <input id="set-card-t" type="text" placeholder="Keep going! ✨" value="">
+    </div>
+    <div class="setting-row">
+      <div><label>Keep going card body</label><small>Sidebar motivation message</small></div>
+      <textarea id="set-card-b" rows="2" placeholder="Progress is progress, no matter how small."></textarea>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:8px">
+      <button class="moon-btn pri" onclick="saveSettings()"><i class="ti ti-device-floppy"></i>Save settings</button>
+      <button class="moon-btn" onclick="resetSettings()"><i class="ti ti-refresh"></i>Reset to defaults</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="margin-bottom:12px"><i class="ti ti-tags" style="color:#818cf8"></i>AO topic labels</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px">View, add, remove, or rename topic labels for each competency area. These appear in the AO topic dropdown when adding or editing a case.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px" id="topic-area-buttons"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="margin-bottom:12px"><i class="ti ti-refresh" style="color:#818cf8"></i>Spaced review schedule</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Set how many days after a result you want to be reminded to re-test. These labels appear in the Spaced Action column.</p>
+    <div class="setting-row">
+      <div><label>After NA/NC — re-test in</label><small>Days until first retry</small></div>
+      <input id="set-sr-nc" type="number" min="1" max="30" value="1" style="min-width:80px">
+    </div>
+    <div class="setting-row">
+      <div><label>After RC — re-test in</label><small>Days until retry</small></div>
+      <input id="set-sr-rc" type="number" min="1" max="30" value="3" style="min-width:80px">
+    </div>
+    <div class="setting-row" style="border-bottom:none">
+      <div><label>After C — review in</label><small>Days until final review</small></div>
+      <input id="set-sr-c" type="number" min="1" max="60" value="7" style="min-width:80px">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="margin-bottom:12px"><i class="ti ti-cards" style="color:#818cf8"></i>Oracle card messages</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Customise the messages drawn from the oracle deck. One message per line for each category.</p>
+    <div class="frow">
+      <label>🎲 Do the case! messages (25% chance)</label>
+      <textarea id="set-do-msgs" rows="6" style="font-size:11px"></textarea>
+    </div>
+    <div class="frow">
+      <label>☁️ No cases today! messages (75% chance)</label>
+      <textarea id="set-no-msgs" rows="5" style="font-size:11px"></textarea>
+    </div>
+    <div class="frow">
+      <label>🌙 Wildcard / commentary messages <span style="font-size:10px;color:var(--hint);font-weight:400">(added to both pools — can appear as main or bonus message)</span></label>
+      <textarea id="set-wild-msgs" rows="5" style="font-size:11px"></textarea>
+    </div>
+    <button class="moon-btn pri" style="margin-top:4px" onclick="saveOracleMsgs()"><i class="ti ti-device-floppy"></i>Save oracle messages</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="margin-bottom:12px"><i class="ti ti-database" style="color:#818cf8"></i>Data &amp; storage</div>
+    <div class="setting-row">
+      <div><label>Total cases</label><small>Stored in your browser</small></div>
+      <span id="set-cases" style="font-size:13px;font-weight:700;color:var(--indigo)">—</span>
+    </div>
+    <div class="setting-row">
+      <div><label>Total AOs</label><small>Across all cases</small></div>
+      <span id="set-aos" style="font-size:13px;font-weight:700;color:var(--indigo)">—</span>
+    </div>
+    <div class="setting-row" style="border-bottom:none">
+      <div><label>Export backup</label><small>Download your data as CSV</small></div>
+      <button class="moon-btn" onclick="doExport()"><i class="ti ti-download"></i>Export CSV</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- end center -->
+
+<!-- ── RIGHT PANEL ────────────────────────────────────────── -->
+<div class="rpanel">
+  <div>
+    <div class="sec-lbl" style="margin-bottom:4px">Case focus</div>
+    <div style="font-size:13.5px;font-weight:700;color:var(--body);line-height:1.3" id="rp-name">Select a case</div>
+    <div style="font-size:11px;color:var(--hint);margin-top:3px" id="rp-ao">Click any case name to focus</div>
+  </div>
+  <div class="rpc">
+    <div class="rpt" style="display:flex;justify-content:space-between;align-items:center">
+      <span>Case stats</span>
+      <button onclick="toggleRpHide('rp-stats-body','rp-stats-hide-icon')" title="Hide/show" style="background:none;border:none;cursor:pointer;padding:0;color:var(--hint);font-size:13px;line-height:1"><i class="ti ti-eye" id="rp-stats-hide-icon"></i></button>
+    </div>
+    <div id="rp-stats-body">
+      <div class="evr"><span>AOs logged</span><span style="font-size:11px;color:var(--hint)">—</span></div>
+      <div class="evr"><span>NA / NC</span><span style="font-size:11px;color:var(--hint)">—</span></div>
+      <div class="evr"><span>RC</span><span style="font-size:11px;color:var(--hint)">—</span></div>
+      <div class="evr"><span>C / CD</span><span style="font-size:11px;color:var(--hint)">—</span></div>
+      <div class="evr"><span>Avg C %</span><span style="font-size:11px;color:var(--hint)">—</span></div>
+      <div class="evr"><span>Avg RC+ %</span><span style="font-size:11px;color:var(--hint)">—</span></div>
+      <div class="evr" style="border-bottom:none"><span>Score</span><span style="font-size:11px;color:var(--hint)">—</span></div>
+    </div>
+  </div>
+  <div class="rpc">
+    <div class="rpt">
+      <svg width="11" height="11" viewBox="0 0 11 11" style="margin-right:3px;vertical-align:-1px" aria-hidden="true"><path d="M5.5.5L6.8 4H10.5L7.5 6.2L8.6 9.8L5.5 7.8L2.4 9.8L3.5 6.2L.5 4H4.2Z" fill="#fcd34d"/></svg>
+      Learning sky
+    </div>
+    <div class="sky-mini-box sky-canvas" id="sky-mini" style="height:98px"></div>
+    <div style="display:flex;justify-content:space-between;font-size:9.5px;color:var(--hint);margin-top:5px"><span>dim = attempted</span><span>gold = mastered</span></div>
+  </div>
+  <div class="rpc">
+    <div class="rpt" style="display:flex;justify-content:space-between;align-items:center">
+      <span>Progress snapshot</span>
+      <button onclick="toggleRpHide('rp-progress-wrap','rp-progress-hide-icon')" title="Hide/show" style="background:none;border:none;cursor:pointer;padding:0;color:var(--hint);font-size:13px;line-height:1"><i class="ti ti-eye" id="rp-progress-hide-icon"></i></button>
+    </div>
+    <div id="rp-progress-wrap"><div class="stat2">
+      <div class="sc"><div class="sv" id="sp-deb">—</div><div class="sl">Debrief</div></div>
+      <div class="sc"><div class="sv" id="sp-cas">—</div><div class="sl">Cases</div></div>
+      <div class="sc"><div class="sv" id="sp-ao">—</div><div class="sl">AOs</div></div>
+      <div class="sc"><div class="sv" id="sp-rc">—</div><div class="sl">Above RC</div></div>
+      <div class="sc"><div class="sv" id="sp-avgc" style="font-size:15px">—</div><div class="sl">Avg C %</div></div>
+      <div class="sc"><div class="sv" id="sp-avgrc" style="font-size:15px">—</div><div class="sl">Avg RC+ %</div></div>
+    </div></div><!-- end rp-progress-wrap -->
+  </div>
+  <button class="trig" onclick="triggerSpaced()">
+    <i class="ti ti-refresh" style="font-size:14px"></i>Trigger spaced review
+  </button>
+</div>
+
+</div><!-- end layout -->
+
+<!-- ── RATING KEY FOOTER ──────────────────────────────────── -->
+<div class="rkey">
+  <span style="font-weight:700;color:var(--muted)">Rating:</span>
+  <div class="rki"><span class="rb r-c" style="font-size:10.5px">C / CD</span> Competent</div>
+  <div class="rki"><span class="rb r-rc" style="font-size:10.5px">RC</span> Reaching competence</div>
+  <div class="rki"><span class="rb r-nc" style="font-size:10.5px">NC / NA</span> Not competent</div>
+  <div style="margin-left:auto;display:flex;gap:13px">
+    <div class="rki"><i class="ti ti-clock" style="font-size:12px;color:var(--hint)"></i> Attempted</div>
+    <div class="rki"><i class="ti ti-refresh" style="font-size:12px;color:#818cf8"></i> Re-test due</div>
+    <div class="rki"><i class="ti ti-check" style="font-size:12px;color:#10b981"></i> Mastered</div>
+  </div>
+</div>
+
+</div><!-- end app -->
+
+<!-- ═══════════════════════════════════════════════════════════
+     ADD / EDIT CASE MODAL
+═══════════════════════════════════════════════════════════ -->
+<div class="moverlay" id="modal-ov" onclick="if(event.target===this)closeM()">
+  <div class="mbox">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:15px">
+      <h2 id="m-title" style="margin-bottom:0">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M10 2.5C10 2.5 6 6.5 6 10C6 12.2 7.8 14 10 14C12.2 14 14 12.2 14 10C14 6.5 10 2.5 10 2.5Z" fill="#818cf8" opacity=".80"/>
+          <circle cx="15" cy="5" r="2" fill="#fcd34d"/>
+        </svg>
+        Add case
+      </h2>
+      <button onclick="closeM()" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:24px;line-height:1;padding:0 0 0 10px;font-family:var(--font)" title="Close (Esc)">×</button>
+    </div>
+    <!-- Case fields -->
+    <div class="fgrid">
+      <div class="frow"><label>Case name *</label><input id="f-nm" type="text" placeholder="e.g. Veza Eye Centre"></div>
+      <div class="frow"><label>Date</label><input id="f-dt" type="date"></div>
+      <div class="frow"><label>Day</label><select id="f-dy"><option>Day 1</option><option>Day 2</option><option selected>Day 3</option></select></div>
+      <div class="frow"><label>Attempt type</label><select id="f-at"><option value="First">First attempt</option><option value="Redo">Redo</option></select></div>
+      <div class="frow"><label>Revised?</label><select id="f-rv"><option value="No">Not revised</option><option value="Yes">Revised ✓</option></select></div>
+      <div class="frow"><label>Debriefed?</label><select id="f-db"><option value="No">Not debriefed</option><option value="Yes">Debriefed ✓</option></select></div>
+    </div>
+    <div class="fgrid" style="margin-top:0">
+      <div class="frow"><label>Standard (ASPE / IFRS)</label><select id="f-std"><option value="">Not specified</option><option value="ASPE">ASPE</option><option value="IFRS">IFRS</option><option value="Mixed">Mixed</option></select></div>
+      <div class="frow"><label>Spaced action</label><select id="f-spaced"><option value="Attempted">Attempted</option><option value="Re-Test Due">Re-Test Due</option><option value="Day 3 Re-Test">Day 3 Re-Test</option><option value="Day 7 Re-Test">Day 7 Re-Test</option><option value="Mastered">Mastered</option></select></div>
+    </div>
+    <div class="frow"><label>Overall notes</label><textarea id="f-nt" placeholder="Key observations, overall performance notes…"></textarea></div>
+
+    <div class="sec-lbl" style="margin-top:12px">Assessment opportunities</div>
+    <div style="overflow-x:auto;margin-bottom:7px">
+      <table class="ao-tbl">
+        <thead><tr><th>AO title</th><th>Area</th><th>Topic</th><th>Result</th><th>Debriefed</th><th>Comment</th><th></th></tr></thead>
+        <tbody id="ao-mr"></tbody>
+      </table>
+    </div>
+    <!-- AO add strip -->
+    <div class="ao-strip">
+      <input id="na-t" type="text" placeholder="AO title…" style="width:130px">
+      <select id="na-a" onchange="popTop()"><option>FR</option><option>MA</option><option>Tax</option><option>Audit</option><option>SG</option><option>Finance</option></select>
+      <select id="na-tp" style="width:150px"></select>
+      <select id="na-r"><option>NA/NC</option><option>RC</option><option>C</option><option>CD</option></select>
+      <input id="na-c" type="text" placeholder="Comment…" style="width:130px">
+      <button class="pri" onclick="addAOR()"><i class="ti ti-plus"></i> Add AO</button>
+    </div>
+    <p style="font-size:10.5px;color:var(--hint);margin-top:6px">💡 Fill in all fields above, then click Add AO. You can edit any row directly in the table.</p>
+    <div class="mfoot">
+      <button onclick="closeM()">Cancel</button>
+      <button class="pri" onclick="saveC()"><i class="ti ti-device-floppy" style="font-size:13px"></i> Save case</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     AO NOTES MODAL — "What do I need for C/RC?"
+═══════════════════════════════════════════════════════════ -->
+<div class="moverlay" id="ao-notes-ov" onclick="if(event.target===this)closeAONotes()">
+  <div class="mbox" style="width:520px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+      <div>
+        <h2 style="margin-bottom:2px" id="aon-title">AO Notes</h2>
+        <div style="font-size:11px;color:var(--hint)" id="aon-sub">Case · Area · Topic</div>
+      </div>
+      <button onclick="closeAONotes()" aria-label="Close" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:26px;line-height:1;padding:0 0 0 12px;margin-top:-2px" title="Close (Esc)">×</button>
+    </div>
+    <div id="aon-summary" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px"></div>
+
+    <div class="frow">
+      <label>What's needed to reach C / CD on this AO?</label>
+      <textarea id="aon-need" rows="3" placeholder="e.g. Need to identify 2 more case facts, quantify the impact in $, and tie the conclusion back to the client's objective…"></textarea>
+    </div>
+    <div class="frow">
+      <label>What am I currently missing? (gap notes)</label>
+      <textarea id="aon-gap" rows="3" placeholder="e.g. Missed the materiality threshold comparison, didn't address both alternatives…"></textarea>
+    </div>
+    <div class="frow" style="margin-bottom:0">
+      <label>Points / structure to remember next time</label>
+      <textarea id="aon-points" rows="3" placeholder="e.g. 1. State the issue clearly  2. Cite ASPE 3065 criteria  3. Apply to case facts with numbers  4. Conclude with recommendation"></textarea>
+    </div>
+
+    <div class="mfoot">
+      <button onclick="closeAONotes()">Cancel</button>
+      <button class="pri" onclick="saveAONotes()"><i class="ti ti-device-floppy" style="font-size:13px"></i> Save notes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TOPIC LABELS EDIT MODAL
+═══════════════════════════════════════════════════════════ -->
+<div class="moverlay" id="topics-ov" onclick="if(event.target===this)closeTopicsModal()">
+  <div class="mbox" style="width:500px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+      <h2 style="margin-bottom:0"><i class="ti ti-tags" style="color:#818cf8;font-size:18px"></i> <span id="topics-modal-title">Edit topics</span></h2>
+      <button onclick="closeTopicsModal()" aria-label="Close" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:26px;line-height:1;padding:0 0 0 12px;margin-top:-2px" title="Close (Esc)">×</button>
+    </div>
+    <p style="font-size:11.5px;color:var(--hint);margin-bottom:12px">Click × to remove a topic. Add new ones below. Changes apply immediately to the AO topic dropdown.</p>
+    <div id="topics-chip-wrap" style="display:flex;flex-wrap:wrap;gap:6px;max-height:280px;overflow-y:auto;padding-bottom:8px;margin-bottom:10px;border-bottom:0.5px solid rgba(175,192,255,0.2)"></div>
+    <div class="ao-strip" style="margin-top:0">
+      <input id="topics-new-input" type="text" placeholder="Add new topic…" style="width:260px" onkeydown="if(event.key==='Enter'){event.preventDefault();addTopicChip();}">
+      <button class="pri" onclick="addTopicChip()"><i class="ti ti-plus"></i> Add</button>
+    </div>
+    <div class="mfoot">
+      <button onclick="restoreDefaultTopics()" style="margin-right:auto;color:#dc2626;border-color:#fca5a5"><i class="ti ti-refresh" style="font-size:12px"></i> Restore defaults</button>
+      <button onclick="closeTopicsModal()">Cancel</button>
+      <button class="pri" onclick="saveTopicsModal()"><i class="ti ti-device-floppy" style="font-size:13px"></i> Save topics</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════════════════════ -->
+<script>
+/* ─── AO topic map ─────────────────────────────────────────── */
+const AOP_DEFAULT={
+  FR:["Revenue Recognition","Cash & Cash Equivalents","Accounts Receivable","Inventory","PPE","Investment Property","Assets Held for Sale","Agriculture","Intangible Assets","Goodwill","Impairment","Investments","Associates","Joint Arrangements","Financial Instruments","Hedge Accounting","Provisions","ARO","Employee Benefits","Long-Term Liabilities","Share-Based Payments","Shareholders' Equity","EPS","Preferred Shares","Business Combination","Consolidation","Foreign Currency","Related Party Transactions","Government Assistance","Non-Monetary Transactions","Subsequent Events","ASPE vs IFRS","Accounting Policies","Financial Statement Analysis","NPO","Public Sector Accounting"],
+  MA:["Budgeting","Forecasting","Capacity Analysis","Cost Allocation","ABC Costing","Cost Management","Strategic Cost Management","CVP","Breakeven","Pricing","Transfer Pricing","Buy vs Sell","Lease vs Buy","Upgrade Options","Variance Analysis","Balanced Scorecard","KPI Development","Compensation","Bonus Plans","Working Capital","Order Quantity","Quality Management","Business Processes"],
+  Tax:["Personal Taxable Income","Personal Tax Payable","Taxable Benefits","Moving Expenses","Home Office Expenses","RRSP vs TFSA","Principal Residence Exemption","Corporate Taxable Income","Corporate Tax Payable","CCPC","QSBC","SR&ED","Loss Carryovers","GST/HST Implications","GST/HST Administration","GST/HST Returns","Shareholder Loans","Shareholder Remuneration","Related Corporations","Employee vs Contractor","PSB","Share Sale","Asset Sale","Business Acquisition","Rollovers","Share Exchanges","Estate Planning","Tax Planning","Tax Advice","Tax Administration","CRA Issues","Reassessments","Filing Requirements"],
+  Audit:["Engagement Acceptance","Materiality","Risk Assessment","Audit Approach","Audit Procedures","Review Procedures","Analytical Procedures","Compliance Procedures","Due Diligence","Internal Controls","Control Weaknesses","Control Testing","Audit Opinion","Key Audit Matters","Special Reports","Compilation vs Review","Audit vs Review","Special Engagements","Data Security","Data Integrity","Data Quality","AI Audit Considerations","Independence","Use of Expert","Quality Management"],
+  SG:["SWOT","Environmental Scan","Industry Analysis","Risks & Opportunities","Strategic Fit","Strategic Alignment","Strategic Initiatives","Mission","Vision","Values","Governance Structure","Governance Implications","Board Effectiveness","Risk Mitigation","Compliance Requirements","KPIs","Goals & Metrics"],
+  Finance:["Business Valuation","Asset-Based Valuation","NPV","Payback","Financing Options","WACC","Crowdfunding","Bank Covenants","Investment Options","Dividend Policy","Cash Flow Forecast","Ratio Analysis"]
+};
+
+const SKY_POS=[
+  {t:'Revenue Recog.',x:8,y:12},{t:'PPE',x:22,y:30},{t:'Leases',x:14,y:52},
+  {t:'Materiality',x:38,y:18},{t:'Int. Controls',x:52,y:42},{t:'Risk Assess.',x:44,y:65},
+  {t:'Corp. Tax',x:68,y:15},{t:'GST/HST',x:78,y:48},{t:'CCPC',x:63,y:70},
+  {t:'NPV',x:88,y:25},{t:'CVP',x:35,y:78},{t:'Budgeting',x:82,y:78},
+  {t:'SWOT',x:58,y:85},{t:'Goodwill',x:5,y:82},{t:'Investments',x:26,y:15},
+  {t:'Variance',x:70,y:60},{t:'KPIs',x:93,y:60},{t:'Bus. Val.',x:50,y:25},
+  {t:'Consolidation',x:30,y:45},{t:'SR&ED',x:90,y:90},{t:'Audit Opinion',x:18,y:88},
+  {t:'WACC',x:75,y:35},{t:'Provisions',x:7,y:38},{t:'EPS',x:95,y:42}
+];
+
+/* ─── Supabase 配置 ─────────────────────────────────────────── */
+// 👇 把下面两行换成你自己的 Supabase 项目 URL 和 anon key
+const SUPABASE_URL = 'https://fmdywtsnqxvwdpfgsddy.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_GPg_4TWiJeW1pOwrH88YfA_so3jnfgV';
+const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let currentUser = null;
+
+/* ─── Auth UI ───────────────────────────────────────────────── */
+function showAuthScreen(){
+  document.querySelector('.app').style.display='none';
+  let authEl=document.getElementById('auth-screen');
+  if(!authEl){
+    authEl=document.createElement('div');
+    authEl.id='auth-screen';
+    authEl.innerHTML=`
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;
+      background:radial-gradient(ellipse 90% 55% at 8% 6%,rgba(255,215,185,.50) 0%,transparent 58%),
+      radial-gradient(ellipse 65% 45% at 92% 4%,rgba(225,210,255,.55) 0%,transparent 52%),
+      linear-gradient(155deg,#e6eaf9 0%,#dce3f7 22%,#ede9fb 48%,#e2eaf8 75%,#dde4f7 100%)">
+      <div style="background:#fff;border-radius:18px;padding:36px 40px;width:380px;max-width:94vw;
+        box-shadow:0 16px 60px rgba(99,102,241,.14);border:0.5px solid rgba(175,192,255,.4)">
+        <div style="text-align:center;margin-bottom:28px">
+          <div style="font-size:28px;margin-bottom:8px">📚</div>
+          <div style="font-size:17px;font-weight:700;color:#4f46e5;letter-spacing:-.01em">CFE Learning Tracker</div>
+          <div style="font-size:12px;color:#5a6a82;margin-top:4px">Sign in to access your data</div>
+        </div>
+        <div id="auth-msg" style="font-size:12px;margin-bottom:12px;text-align:center;padding:8px 12px;border-radius:8px;display:none"></div>
+        <div style="margin-bottom:13px">
+          <label style="font-size:10.5px;font-weight:700;color:#5a6a82;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Email</label>
+          <input id="auth-email" type="email" placeholder="you@example.com" autocomplete="email"
+            style="width:100%;padding:9px 12px;border:0.5px solid rgba(175,192,255,.5);border-radius:8px;
+            font-size:13px;font-family:inherit;box-sizing:border-box;outline:none"
+            onkeydown="if(event.key==='Enter')doSignIn()">
+        </div>
+        <div style="margin-bottom:22px">
+          <label style="font-size:10.5px;font-weight:700;color:#5a6a82;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Password</label>
+          <input id="auth-pw" type="password" placeholder="••••••••" autocomplete="current-password"
+            style="width:100%;padding:9px 12px;border:0.5px solid rgba(175,192,255,.5);border-radius:8px;
+            font-size:13px;font-family:inherit;box-sizing:border-box;outline:none"
+            onkeydown="if(event.key==='Enter')doSignIn()">
+        </div>
+        <button onclick="doSignIn()" style="width:100%;background:linear-gradient(135deg,#6366f1,#818cf8);
+          color:#fff;border:none;border-radius:9px;padding:12px;font-size:13px;font-family:inherit;
+          font-weight:700;cursor:pointer;margin-bottom:10px;transition:opacity .12s" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+          Sign In
+        </button>
+        <button onclick="doSignUp()" style="width:100%;background:#fff;color:#4f46e5;
+          border:0.5px solid rgba(99,102,241,.3);border-radius:9px;padding:11px;
+          font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;transition:background .12s"
+          onmouseover="this.style.background='rgba(99,102,241,.06)'" onmouseout="this.style.background='#fff'">
+          Create Account
+        </button>
+        <div style="text-align:center;margin-top:14px">
+          <button onclick="doForgot()" style="background:none;border:none;color:#818cf8;font-size:11.5px;cursor:pointer;font-family:inherit">Forgot password?</button>
+        </div>
+      </div>
+    </div>`;
+    document.body.appendChild(authEl);
+  }
+  authEl.style.display='block';
+}
+
+function hideAuthScreen(){
+  const el=document.getElementById('auth-screen');
+  if(el)el.style.display='none';
+  document.querySelector('.app').style.display='flex';
+  const btn=document.getElementById('signout-btn');
+  if(btn)btn.style.display='flex';
+}
+
+function showAuthMsg(msg,type='error'){
+  const el=document.getElementById('auth-msg');
+  if(!el)return;
+  el.textContent=msg;
+  el.style.display='block';
+  el.style.background=type==='success'?'#d1fae5':'#fee2e2';
+  el.style.color=type==='success'?'#065f46':'#c92222';
+}
+
+async function doSignIn(){
+  const email=(document.getElementById('auth-email')||{}).value||'';
+  const pw=(document.getElementById('auth-pw')||{}).value||'';
+  if(!email||!pw){showAuthMsg('Please enter email and password.');return;}
+  const btn=document.querySelector('#auth-screen button');
+  btn.textContent='Signing in…';btn.disabled=true;
+  const {error}=await _supabase.auth.signInWithPassword({email,password:pw});
+  btn.textContent='Sign In';btn.disabled=false;
+  if(error)showAuthMsg(error.message);
+}
+
+async function doSignUp(){
+  const email=(document.getElementById('auth-email')||{}).value||'';
+  const pw=(document.getElementById('auth-pw')||{}).value||'';
+  if(!email||!pw){showAuthMsg('Please enter email and password.');return;}
+  if(pw.length<6){showAuthMsg('Password must be at least 6 characters.');return;}
+  const {error}=await _supabase.auth.signUp({email,password:pw});
+  if(error)showAuthMsg(error.message);
+  else showAuthMsg('Account created! Check your email to confirm, or sign in if confirmation is turned off.','success');
+}
+
+async function doForgot(){
+  const email=(document.getElementById('auth-email')||{}).value||'';
+  if(!email){showAuthMsg('Enter your email address first.');return;}
+  const {error}=await _supabase.auth.resetPasswordForEmail(email);
+  if(error)showAuthMsg(error.message);
+  else showAuthMsg('Password reset email sent — check your inbox.','success');
+}
+
+async function signOut(){
+  await _supabase.auth.signOut();
+  const btn=document.getElementById('signout-btn');
+  if(btn)btn.style.display='none';
+  db={cases:[],aos:[],notes:'',resources:[],topicReviews:{}};
+  CFG={...DEF_SETTINGS};
+  currentUser=null;
+  showAuthScreen();
+}
+
+/* ─── Data layer (Supabase cloud) ───────────────────────────── */
+function loadDB(){ return {cases:[],aos:[],notes:'',resources:[],topicReviews:{}}; }
+let db=loadDB();
+
+async function loadDBFromCloud(){
+  if(!currentUser)return;
+  const {data,error}=await _supabase
+    .from('user_data')
+    .select('data,settings')
+    .eq('user_id',currentUser.id)
+    .single();
+  if(data&&data.data){
+    db=data.data;
+    if(!db.topicReviews)db.topicReviews={};
+    if(!db.resources)db.resources=[];
+    CFG=Object.assign({},DEF_SETTINGS,data.settings||{});
+  }
+}
+
+async function sv(){
+  if(!currentUser)return;
+  try{
+    await _supabase.from('user_data').upsert({
+      user_id:currentUser.id,
+      data:db,
+      settings:CFG,
+      updated_at:new Date().toISOString()
+    },{onConflict:'user_id'});
+  }catch(e){showToast('Save error — check your connection');}
+}
+
+/* Settings (kept in cloud via sv()) */
+let eId=null,tAOs=[],aF='all';
+const DEF_SETTINGS={name:'future CPA',msg:'small steps today, massive impact tomorrow',focus:'Focus: outline one AO — 5 min',cardT:'Keep going! ✨',cardB:"Progress is progress, no matter how small. You're building mastery.",topicLists:{}};
+function loadSettings(){ return {...DEF_SETTINGS}; }
+function svSettings(s){ CFG=s; sv(); }
+let CFG=loadSettings();
+
+function applySettings(){
+  document.getElementById('top-greet-name').textContent=CFG.name||DEF_SETTINGS.name;
+  document.getElementById('top-greet-msg').textContent=CFG.msg||DEF_SETTINGS.msg;
+  document.getElementById('top-focus').textContent=CFG.focus||DEF_SETTINGS.focus;
+  document.getElementById('sb-card-title').textContent=CFG.cardT||DEF_SETTINGS.cardT;
+  document.getElementById('sb-card-body').textContent=CFG.cardB||DEF_SETTINGS.cardB;
+}
+function saveSettings(){
+  CFG.name=document.getElementById('set-name').value||DEF_SETTINGS.name;
+  CFG.msg=document.getElementById('set-msg').value||DEF_SETTINGS.msg;
+  CFG.focus=document.getElementById('set-focus').value||DEF_SETTINGS.focus;
+  CFG.cardT=document.getElementById('set-card-t').value||DEF_SETTINGS.cardT;
+  CFG.cardB=document.getElementById('set-card-b').value||DEF_SETTINGS.cardB;
+  // spaced review
+  const srNc=document.getElementById('set-sr-nc');
+  const srRc=document.getElementById('set-sr-rc');
+  const srC=document.getElementById('set-sr-c');
+  if(srNc)CFG.srNc=parseInt(srNc.value)||1;
+  if(srRc)CFG.srRc=parseInt(srRc.value)||3;
+  if(srC)CFG.srC=parseInt(srC.value)||7;
+  svSettings(CFG); applySettings();
+  showToast('Settings saved ✓');
+}
+function resetSettings(){
+  if(!confirm('Reset all settings to defaults?'))return;
+  CFG={...DEF_SETTINGS};svSettings(CFG);applySettings();loadSettingsUI();
+  showToast('Settings reset');
+}
+function loadSettingsUI(){
+  document.getElementById('set-name').value=CFG.name||'';
+  document.getElementById('set-msg').value=CFG.msg||'';
+  document.getElementById('set-focus').value=CFG.focus||'';
+  document.getElementById('set-card-t').value=CFG.cardT||'';
+  document.getElementById('set-card-b').value=CFG.cardB||'';
+  document.getElementById('set-cases').textContent=db.cases.length;
+  document.getElementById('set-aos').textContent=db.aos.length;
+  renderTopicAreaButtons();
+  loadOracleMsgsUI();
+  const srNc=document.getElementById('set-sr-nc');
+  const srRc=document.getElementById('set-sr-rc');
+  const srC=document.getElementById('set-sr-c');
+  if(srNc)srNc.value=CFG.srNc||1;
+  if(srRc)srRc.value=CFG.srRc||3;
+  if(srC)srC.value=CFG.srC||7;
+}
+
+/* ─── AO topic labels — full editable lists per area ─────────── */
+const AREA_LABELS={FR:'Financial Reporting',MA:'Management Accounting',Tax:'Tax',Audit:'Audit',SG:'Strategy & Governance',Finance:'Finance'};
+const AREA_ICONS={FR:'ti-book-2',MA:'ti-chart-bar',Tax:'ti-file-invoice',Audit:'ti-shield-check',SG:'ti-sitemap',Finance:'ti-coin'};
+
+function renderTopicAreaButtons(){
+  const wrap=document.getElementById('topic-area-buttons');
+  if(!wrap)return;
+  const areas=['FR','MA','Tax','Audit','SG','Finance'];
+  wrap.innerHTML=areas.map(a=>{
+    const cnt=getTopicsForArea(a).length;
+    return '<button class="moon-btn" onclick="openTopicsModal(\''+a+'\')" style="flex:1 1 140px;justify-content:space-between">'
+      +'<span><i class="ti '+(AREA_ICONS[a]||'ti-tag')+'" style="margin-right:5px"></i>'+AREA_LABELS[a]+'</span>'
+      +'<span style="font-size:10px;color:var(--hint);font-weight:600">'+cnt+'</span>'
+      +'</button>';
+  }).join('');
+}
+
+let topicsModalArea=null, topicsModalDraft=[];
+function openTopicsModal(area){
+  topicsModalArea=area;
+  topicsModalDraft=[...getTopicsForArea(area)];
+  document.getElementById('topics-modal-title').textContent=(AREA_LABELS[area]||area)+' — topic labels';
+  renderTopicsChips();
+  document.getElementById('topics-new-input').value='';
+  document.getElementById('topics-ov').classList.add('open');
+  setTimeout(()=>document.getElementById('topics-new-input').focus(),80);
+}
+function closeTopicsModal(){document.getElementById('topics-ov').classList.remove('open');}
+function renderTopicsChips(){
+  const wrap=document.getElementById('topics-chip-wrap');
+  wrap.innerHTML=topicsModalDraft.length
+    ?topicsModalDraft.map((t,i)=>'<span class="tag-chip">'+esc(t)+'<button onclick="removeTopicChip('+i+')" title="Remove">×</button></span>').join('')
+    :'<div style="font-size:12px;color:var(--hint);padding:6px 0">No topics yet — add some below.</div>';
+}
+function removeTopicChip(i){topicsModalDraft.splice(i,1);renderTopicsChips();}
+function addTopicChip(){
+  const inp=document.getElementById('topics-new-input');
+  const v=inp.value.trim();
+  if(!v)return;
+  if(topicsModalDraft.some(t=>t.toLowerCase()===v.toLowerCase())){showToast('That topic already exists');return;}
+  topicsModalDraft.push(v);
+  inp.value='';
+  renderTopicsChips();
+  inp.focus();
+}
+function restoreDefaultTopics(){
+  if(!topicsModalArea)return;
+  if(!confirm('Restore default topics for '+(AREA_LABELS[topicsModalArea]||topicsModalArea)+'? Any custom additions/removals for this area will be lost.'))return;
+  topicsModalDraft=[...(AOP_DEFAULT[topicsModalArea]||[])];
+  renderTopicsChips();
+}
+function saveTopicsModal(){
+  if(!topicsModalArea)return;
+  if(!CFG.topicLists)CFG.topicLists={};
+  CFG.topicLists[topicsModalArea]=[...topicsModalDraft];
+  svSettings(CFG);
+  closeTopicsModal();
+  renderTopicAreaButtons();
+  popTop();
+  showToast((AREA_LABELS[topicsModalArea]||topicsModalArea)+' topics saved ✓');
+}
+function getTopicsForArea(area){
+  if(CFG.topicLists&&CFG.topicLists[area])return CFG.topicLists[area];
+  return AOP_DEFAULT[area]||[];
+}
+
+/* ─── Cloud background ─────────────────────────────────────── */
+(function buildClouds(){
+  const bg=document.getElementById('clouds-bg');
+  if(!bg)return;
+  // 7 clouds at various positions
+  const clouds=[
+    {top:'2%', left:'-2%', w:310,h:98, op:.90,tint:'rgba(255,215,185,0.90)'},
+    {top:'1%', left:'60%', w:255,h:82, op:.86,tint:'rgba(255,205,172,0.88)'},
+    {top:'17%',left:'24%', w:175,h:55, op:.70,tint:'rgba(220,210,255,0.80)'},
+    {bottom:'5%',left:'44%',w:330,h:105,op:.85,tint:'rgba(255,255,255,0.92)'},
+    {bottom:'15%',left:'-2%',w:215,h:68,op:.82,tint:'rgba(255,220,192,0.86)'},
+    {top:'6%', left:'34%', w:120,h:38, op:.65,tint:'rgba(255,225,208,0.76)'},
+    {top:'38%',left:'80%', w:170,h:54, op:.68,tint:'rgba(240,235,255,0.82)'},
+    {top:'56%',left:'50%', w:145,h:46, op:.60,tint:'rgba(255,240,228,0.75)'},
+    {top:'28%',left:'-2%', w:115,h:36, op:.58,tint:'rgba(255,228,212,0.72)'},
+    {top:'45%',left:'35%', w:90, h:28, op:.45,tint:'rgba(245,240,255,0.65)'},
+  ];
+  clouds.forEach(c=>{
+    const d=document.createElement('div');
+    d.style.cssText='position:absolute;pointer-events:none;'
+      +(c.top?'top:'+c.top+';':'')+(c.bottom?'bottom:'+c.bottom+';':'')
+      +'left:'+c.left+';opacity:'+c.op+';width:'+c.w+'px;height:'+c.h+'px';
+    // main body
+    const body=document.createElement('span');
+    body.style.cssText='position:absolute;inset:0;border-radius:50px;background:'+c.tint+';display:block';
+    // bumps
+    const b1=document.createElement('span');b1.style.cssText='position:absolute;width:'+(c.w*.44)+'px;height:'+(c.w*.44)+'px;border-radius:50%;background:'+c.tint+';top:-'+(c.w*.2)+'px;left:'+(c.w*.12)+'px;display:block';
+    const b2=document.createElement('span');b2.style.cssText='position:absolute;width:'+(c.w*.33)+'px;height:'+(c.w*.33)+'px;border-radius:50%;background:'+c.tint+';top:-'+(c.w*.14)+'px;left:'+(c.w*.44)+'px;display:block';
+    d.appendChild(body);d.appendChild(b1);d.appendChild(b2);
+    bg.appendChild(d);
+  });
+})();
+
+/* ─── Toast ────────────────────────────────────────────────── */
+function showToast(msg,dur=2800){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),dur);
+}
+
+/* ─── Navigation ───────────────────────────────────────────── */
+function goPage(p,el){
+  document.querySelectorAll('.pg').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.sbi').forEach(x=>x.classList.remove('active'));
+  const pg=document.getElementById('page-'+p);
+  if(!pg){showToast('Page "'+p+'" coming soon!');return;}
+  pg.classList.add('active');
+  if(el)el.classList.add('active');
+  else{const m=document.querySelector('[data-p="'+p+'"]');if(m)m.classList.add('active');}
+  if(p==='dashboard')rdDash();
+  if(p==='cases')rCases();
+  if(p==='aos')rAOs();
+  if(p==='sky')rSkyStar(document.getElementById('sky-full'),true);
+  if(p==='analytics')rAnalytics();
+  if(p==='review')rReview();
+  if(p==='settings')loadSettingsUI();
+  if(p==='notes')loadNotes();
+}
+
+/* ─── Helpers ──────────────────────────────────────────────── */
+function rCls(r){return{'NC':'r-nc','NA/NC':'r-nc','RC':'r-rc','C':'r-c','CD':'r-cd'}[r]||'r-rc';}
+function rb(r){return '<span class="rb '+rCls(r)+'">'+esc(r||'—')+'</span>';}
+function normArea(a){
+  if(!a)return 'FR';
+  const s=String(a).trim().toUpperCase().replace(/\s+/g,'');
+  const m={'S&G':'SG','SG':'SG','STRATEGY':'SG','STRATEGY&GOVERNANCE':'SG',
+           'FR':'FR','FINANCIALREPORTING':'FR',
+           'MA':'MA','MANAGEMENTACCOUNTING':'MA',
+           'TAX':'Tax',
+           'AUDIT':'Audit','AUDIT&ASSURANCE':'Audit','ASSURANCE':'Audit',
+           'FINANCE':'Finance','FIN':'Finance'};
+  return m[s]||a;
+}
+function abadge(a){const aa=normArea(a);const m={FR:'ab-fr',MA:'ab-ma',Tax:'ab-tx',Audit:'ab-au',SG:'ab-sg',Finance:'ab-fi'};const lbl=aa==='SG'?'S&G':aa;return '<span class="ab '+(m[aa]||'ab-fr')+'">'+esc(lbl)+'</span>';}
+function yn(v){return v==='Yes'?'<span style="color:#047857;font-size:12px;font-weight:700">Yes</span>':'<span style="color:var(--hint);font-size:12px">—</span>';}
+function achip(a){
+  const k=a||'Attempted';let ic='ti-clock';
+  if(k.toLowerCase().includes('master'))ic='ti-check';
+  else if(k.toLowerCase().includes('test')||k.toLowerCase().includes('due')||k.toLowerCase().includes('re-'))ic='ti-refresh';
+  return '<span class="achip"><i class="ti '+ic+'" style="font-size:10.5px"></i> '+esc(k)+'</span>';
+}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fmtDate(d){if(!d||d==='—')return '—';const s=String(d).trim();const dt=new Date(s);if(isNaN(dt.getTime()))return s;return dt.toISOString().slice(0,10);}
+function uid(){return 'id_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);}
+
+/* ─── Scoring: NA=0, NC=0, RC=1, C=2, CD=2 ────────────────────── */
+const SMAP={'NA/NC':0,'NC':0,'RC':1,'C':2,'CD':2};
+function caseScoreInfo(caseId){
+  const cas=db.aos.filter(a=>a.case_id===caseId);
+  const total=cas.length;
+  const totalScore=cas.reduce((s,a)=>s+(SMAP[a.result]||0),0);
+  const maxScore=total*2;
+  const scorePct=maxScore?Math.round(totalScore/maxScore*100):0;
+  const nn=cas.filter(a=>a.result==='NA/NC'||a.result==='NC').length;
+  const rr=cas.filter(a=>a.result==='RC').length;
+  const cc=cas.filter(a=>a.result==='C'||a.result==='CD').length;
+  const avgC=total?Math.round(cc/total*100)+'%':'—';
+  const avgRC=total?Math.round((rr+cc)/total*100)+'%':'—';
+  return {total,totalScore,maxScore,scorePct,nn,rr,cc,avgC,avgRC};
+}
+
+/* ─── Dashboard ────────────────────────────────────────────── */
+function rdDash(){
+  const {cases,aos}=db;
+  const nc=aos.filter(a=>a.result==='NA/NC'||a.result==='NC').length;
+  const rc=aos.filter(a=>a.result==='RC').length;
+  const cc=aos.filter(a=>a.result==='C'||a.result==='CD').length;
+  document.getElementById('m-nc').textContent=nc;
+  document.getElementById('m-rc').textContent=rc;
+  document.getElementById('m-cc').textContent=cc;
+
+  // Avg % C and RC+ per case
+  let sumC=0,sumRC=0,caseCount=0;
+  cases.forEach(c=>{
+    const ca=aos.filter(a=>a.case_id===c.id);
+    if(!ca.length)return;
+    caseCount++;
+    const ccd=ca.filter(a=>a.result==='C'||a.result==='CD').length;
+    const rcup=ca.filter(a=>a.result!=='NA/NC').length;
+    sumC+=ccd/ca.length;
+    sumRC+=rcup/ca.length;
+  });
+  document.getElementById('m-avgc').textContent=caseCount?Math.round(sumC/caseCount*100)+'%':'—';
+  document.getElementById('m-avgrc').textContent=caseCount?Math.round(sumRC/caseCount*100)+'%':'—';
+
+  const tot=cases.length,deb=cases.filter(c=>c.debriefed==='Yes').length;
+  document.getElementById('sp-deb').textContent=tot?Math.round(deb/tot*100)+'%':'—';
+  document.getElementById('sp-cas').textContent=tot;
+  document.getElementById('sp-ao').textContent=aos.length;
+  document.getElementById('sp-rc').textContent=aos.filter(a=>a.result==='C'||a.result==='CD').length;
+  const spAvgC=document.getElementById('sp-avgc');if(spAvgC)spAvgC.textContent=caseCount?Math.round(sumC/caseCount*100)+'%':'—';
+  const spAvgRC=document.getElementById('sp-avgrc');if(spAvgRC)spAvgRC.textContent=caseCount?Math.round(sumRC/caseCount*100)+'%':'—';
+
+  // Active tracker
+  const notDeb=cases.filter(c=>c.debriefed!=='Yes');
+  const filt=aF==='all'?notDeb:notDeb.filter(c=>aos.some(a=>a.case_id===c.id&&a.area===aF));
+  document.getElementById('act-cnt').textContent=filt.length+' case'+(filt.length!==1?'s':'');
+  const tb=document.getElementById('dash-tb');
+  if(!filt.length){
+    tb.innerHTML='<tr><td colspan="9"><div class="empty"><i class="ti ti-check-circle" style="color:#10b981"></i>All cases debriefed — great work!<br><button class="lnk" style="margin-top:7px" onclick="openAdd()">Add a new case ↗</button></div></td></tr>';
+  }else{
+    const sorted=[...filt].sort((a,b)=>{
+      const pa=a.pinned?1:0, pb=b.pinned?1:0;
+      if(pa!==pb)return pb-pa; // pinned first
+      return new Date(b.date||0)-new Date(a.date||0);
+    });
+    tb.innerHTML=sorted.map(c=>{
+      const ca=aos.filter(a=>a.case_id===c.id);
+      const f=ca[0]||{};
+      const si=caseScoreInfo(c.id);
+      const pinned=!!c.pinned;
+      return '<tr'+(pinned?' style="background:rgba(252,211,77,0.07)"':'')+'>'
+        +'<td><button onclick="togglePin(\''+c.id+'\')" title="'+(pinned?'Unpin':'Pin to top')+'" style="background:none;border:none;cursor:pointer;font-size:14px;color:'+(pinned?'#d97706':'var(--hint)')+';padding:0"><i class="ti ti-pin'+(pinned?'-filled':'')+'"></i></button></td>'
+        +'<td><div class="cn"><button class="lnk" onclick="openDet(\''+c.id+'\')">'+esc(c.name)+'</button></div></td>'
+        +'<td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#475569" title="'+esc(f.topic||f.title||'—')+'">'+esc(f.topic||f.title||'—')+'</td>'
+        +'<td class="score-cell" style="font-size:11px;font-weight:700;color:'+(si.scorePct>=70?'#047857':si.scorePct>=40?'#b45309':'#dc2626')+'">'+si.totalScore+'/'+si.maxScore+' ('+si.scorePct+'%)</td>'
+        +'<td class="nc-cell"><span class="rb r-nc">'+si.nn+'</span></td>'
+        +'<td class="c-cell"><span class="rb r-cd">'+si.cc+'</span></td>'
+        +'<td>'+achip(c.spaced||'Attempted')+'</td>'
+        +'<td style="color:var(--hint);font-size:11px">'+fmtDate(c.date)+'</td>'
+        +'<td><button class="vbtn" onclick="openDet(\''+c.id+'\')">View</button></td>'
+        +'</tr>';
+    }).join('');
+  }
+
+  // Weakest areas
+  const am={};
+  aos.forEach(a=>{if(!am[a.area])am[a.area]={nc:0,t:0};am[a.area].t++;if(a.result==='NA/NC'||a.result==='RC')am[a.area].nc++;});
+  const sw=Object.entries(am).sort((a,b)=>b[1].nc-a[1].nc).slice(0,4);
+  document.getElementById('weak-l').innerHTML=sw.length
+    ?sw.map((e,i)=>'<div class="mr"><span>'+['1.','2.','3.','4.'][i]+' '+esc(e[0])+'</span>'+abadge(e[0])+'</div>').join('')
+    :'<div style="font-size:12px;color:var(--hint);padding:4px 0">No data yet</div>';
+
+  // Oracle section replaces revision backlog — deck rendered via renderOracleDeck()
+
+  document.getElementById('prog-l').innerHTML=
+    '<div class="pgr"><span>Debrief completion</span><span class="pgv">'+(tot?Math.round(deb/tot*100):0)+'%</span></div>'
+    +'<div class="pgr"><span>Cases attempted</span><span class="pgv">'+tot+'</span></div>'
+    +'<div class="pgr"><span>AOs reviewed</span><span class="pgv">'+aos.length+'</span></div>'
+    +'<div class="pgr"><span>Above RC</span><span class="pgv">'+aos.filter(a=>a.result==='C'||a.result==='CD').length+'</span></div>';
+
+  const rec=[...cases].sort((a,b)=>new Date(b.date||0)-new Date(a.date||0)).slice(0,6);
+  document.getElementById('recent-c').innerHTML=rec.length
+    ?'<div class="card" style="margin-bottom:0"><div class="tbl-wrap"><table style="table-layout:fixed;min-width:500px">'
+      +'<colgroup><col style="width:30%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:13%"></colgroup>'
+      +'<thead><tr><th>Case</th><th>Day</th><th>Attempt</th><th>NA/NC</th><th>RC</th><th>C/CD</th><th>Debriefed</th></tr></thead><tbody>'
+      +rec.map(c=>{
+        const ca=aos.filter(a=>a.case_id===c.id);
+        const nn=ca.filter(a=>a.result==='NA/NC'||a.result==='NC').length,rr=ca.filter(a=>a.result==='RC').length,cc2=ca.filter(a=>a.result==='C'||a.result==='CD').length;
+        return '<tr><td><button class="lnk" onclick="openDet(\''+c.id+'\')">'+esc(c.name)+'</button></td>'
+          +'<td style="color:var(--hint);font-size:11px">'+esc(c.day)+'</td>'
+          +'<td style="color:var(--hint);font-size:11px">'+esc(c.attempt)+'</td>'
+          +'<td>'+rb('NA/NC').replace('NA/NC',nn)+'</td>'
+          +'<td>'+rb('RC').replace('RC',rr)+'</td>'
+          +'<td>'+rb('C').replace('C',cc2)+'</td>'
+          +'<td>'+yn(c.debriefed)+'</td></tr>';
+      }).join('')+'</tbody></table></div></div>'
+    :'<div class="card" style="margin-bottom:0"><div class="empty"><i class="ti ti-folder-open"></i>No cases yet.<br><button class="lnk" style="margin-top:7px" onclick="openAdd()">Add your first case ↗</button></div></div>';
+
+  rSkyStar(document.getElementById('sky-mini'),false);
+  // Initialise oracle deck if not yet drawn
+  if(!oracleCards.length) shuffleOracle();
+  else renderOracleDeck();
+
+  // Re-apply hide states after DOM rebuild
+  applyHideStates();
+}
+
+function setF(f,btn){aF=f;document.querySelectorAll('.fp').forEach(p=>p.classList.remove('active'));btn.classList.add('active');rdDash();}
+
+function togglePin(id){
+  const c=db.cases.find(x=>x.id===id);
+  if(!c)return;
+  c.pinned=!c.pinned;
+  sv();rdDash();
+  showToast(c.pinned?'Pinned to top 📌':'Unpinned');
+}
+
+/* ─── Cases page ────────────────────────────────────────────── */
+function rCases(){
+  const q=(document.getElementById('cs-q')||{}).value?.toLowerCase()||'';
+  const fd=(document.getElementById('cs-day')||{}).value||'';
+  const fa=(document.getElementById('cs-att')||{}).value||'';
+  const fd2=(document.getElementById('cs-deb')||{}).value||'';
+  const list=db.cases.filter(c=>{
+    if(q&&!c.name.toLowerCase().includes(q))return false;
+    if(fd&&c.day!==fd)return false;
+    if(fa&&c.attempt!==fa)return false;
+    if(fd2&&c.debriefed!==fd2)return false;
+    return true;
+  }).sort((a,b)=>new Date(b.date||0)-new Date(a.date||0));
+  const tb=document.getElementById('cases-tb');if(!tb)return;
+  tb.innerHTML=list.length?list.map(c=>{
+    const ca=db.aos.filter(a=>a.case_id===c.id);
+    const nn=ca.filter(a=>a.result==='NA/NC'||a.result==='NC').length,rr=ca.filter(a=>a.result==='RC').length,cc=ca.filter(a=>a.result==='C'||a.result==='CD').length;
+    return '<tr>'
+      +'<td><button class="lnk" onclick="openDet(\''+c.id+'\')">'+esc(c.name)+'</button></td>'
+      +'<td style="color:var(--hint);font-size:11px">'+fmtDate(c.date)+'</td>'
+      +'<td style="color:var(--hint);font-size:11px">'+esc(c.day)+'</td>'
+      +'<td style="font-size:12px;color:#475569">'+esc(c.attempt)+'</td>'
+      +'<td style="font-size:11px;color:var(--muted)">'+esc(c.standard||'—')+'</td>'
+      +'<td>'+rb('NA/NC').replace('NA/NC',nn)+'</td>'
+      +'<td>'+rb('RC').replace('RC',rr)+'</td>'
+      +'<td>'+rb('C').replace('C',cc)+'</td>'
+      +'<td>'+yn(c.debriefed)+'</td>'
+      +'<td style="white-space:nowrap"><button class="lnk" onclick="editC(\''+c.id+'\')" style="margin-right:8px">Edit</button><button class="delbtn" onclick="delC(\''+c.id+'\')">Delete</button></td>'
+      +'</tr>';
+  }).join(''):'<tr><td colspan="9"><div class="empty"><i class="ti ti-folder-open"></i>No cases match your filters.</div></td></tr>';
+}
+
+/* ─── AOs page ──────────────────────────────────────────────── */
+function rAOs(){
+  const ar=(document.getElementById('ao-area')||{}).value||'';
+  const rs=(document.getElementById('ao-res')||{}).value||'';
+  const rd=(document.getElementById('ao-deb')||{}).value||'';
+  const q=(document.getElementById('ao-q')||{}).value?.toLowerCase()||'';
+  const list=db.aos.filter(a=>{
+    if(ar&&a.area!==ar)return false;
+    if(rs&&a.result!==rs)return false;
+    if(rd&&(a.debriefed||'No')!==rd)return false;
+    const cn=(db.cases.find(c=>c.id===a.case_id)||{}).name||'';
+    if(q&&!a.title.toLowerCase().includes(q)&&!cn.toLowerCase().includes(q))return false;
+    return true;
+  });
+  const tb=document.getElementById('aos-tb');if(!tb)return;
+  tb.innerHTML=list.length?list.map(a=>{
+    const c=db.cases.find(x=>x.id===a.case_id)||{};
+    return '<tr>'
+      +'<td><button class="lnk" onclick="openDet(\''+a.case_id+'\')">'+esc(c.name||'—')+'</button></td>'
+      +'<td style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(a.title)+'">'+esc(a.title)+'</td>'
+      +'<td>'+abadge(a.area)+'</td>'
+      +'<td style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(a.topic||'—')+'</td>'
+      +'<td>'+rb(a.result)+'</td>'
+      +'<td>'+yn(a.debriefed)+'</td>'
+      +'<td style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(a.comment||'—')+'</td>'
+      +'</tr>';
+  }).join(''):'<tr><td colspan="7"><div class="empty"><i class="ti ti-list-check"></i>No AOs match your filters.</div></td></tr>';
+}
+
+/* ─── Case detail ───────────────────────────────────────────── */
+function openDet(id){
+  const c=db.cases.find(x=>x.id===id);if(!c)return;
+  const cas=db.aos.filter(a=>a.case_id===id);
+  const {total,totalScore,maxScore,scorePct,nn,rr,cc,avgC,avgRC}=caseScoreInfo(id);
+
+  document.getElementById('det-c').innerHTML=
+    '<div class="card">'
+      +'<div class="card-head"><div class="card-title"><i class="ti ti-folder"></i>'+esc(c.name)+'</div>'
+        +'<button class="vbtn" onclick="editC(\''+c.id+'\')"><i class="ti ti-edit"></i> Edit case</button></div>'
+      +'<div style="display:flex;gap:14px;font-size:12px;color:var(--muted);flex-wrap:wrap;margin-bottom:10px">'
+        +'<span><i class="ti ti-calendar" style="font-size:12px"></i> '+fmtDate(c.date)+'</span>'
+        +'<span>'+esc(c.day)+'</span><span>'+esc(c.attempt)+' attempt</span>'
+        +'<span>Revised: '+yn(c.revised)+'</span><span>Debriefed: '+yn(c.debriefed)+'</span>'+(c.standard?'<span><i class="ti ti-file-description" style="font-size:12px"></i> '+esc(c.standard)+'</span>':'')
+      +'</div>'
+      +'<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">'
+        +rb('NA/NC').replace('NA/NC','NA/NC: '+nn)+' '
+        +rb('RC').replace('RC','RC: '+rr)+' '
+        +rb('C').replace('C','C/CD: '+cc)
+        +'<span class="rb" style="background:#ede9fe;color:#5b21b6">Avg C: '+avgC+'</span>'
+        +'<span class="rb" style="background:#dbeafe;color:#1e40af">Avg RC+: '+avgRC+'</span>'
+        +'<span class="rb" style="background:#fef9c3;color:#713f12">Score: '+totalScore+'/'+maxScore+' ('+scorePct+'%)</span>'
+      +'</div>'
+      +(c.notes?'<p style="font-size:12px;color:var(--muted);padding-top:8px;border-top:0.5px solid rgba(175,192,255,.15)">'+esc(c.notes)+'</p>':'')
+    +'</div>'
+    +'<div class="sec-lbl">Assessment opportunities ('+cas.length+')</div>'
+    +(cas.length
+      ?'<div class="card tbl-wrap"><table style="table-layout:fixed;min-width:560px">'
+          +'<colgroup><col style="width:5%"><col style="width:25%"><col style="width:8%"><col style="width:15%"><col style="width:8%"><col style="width:9%"><col style="width:21%"><col style="width:9%"></colgroup>'
+          +'<thead><tr><th>#</th><th>AO title</th><th>Area</th><th>Topic</th><th>Result</th><th>Debriefed</th><th>Comment</th><th></th></tr></thead><tbody>'
+          +cas.map((a,aoIdx)=>'<tr>'
+            +'<td style="color:var(--hint);font-size:11px;font-weight:700;white-space:nowrap">AO'+(aoIdx+1)+'</td>'
+            +'<td style="font-weight:700;min-width:180px;max-width:260px;word-break:break-word;white-space:normal">'+esc(a.title)+'</td>'
+            +'<td>'+abadge(a.area)+'</td>'
+            +'<td style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(a.topic||'—')+'</td>'
+            +'<td>'+rb(a.result)+'</td>'
+            +'<td>'+yn(a.debriefed)+'</td>'
+            +'<td style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(a.comment||'')+'">'+esc(a.comment||'—')+'</td>'
+            +'<td><button class="vbtn" onclick="openAONotes(\''+c.id+'\',\''+a.id+'\')" style="'+((a.needNotes||a.gapNotes||a.pointsNotes)?'background:rgba(16,185,129,0.10);border-color:rgba(16,185,129,0.3);color:#047857':'')+'"><i class="ti ti-notes"></i> '+((a.needNotes||a.gapNotes||a.pointsNotes)?'Notes ✓':'Notes')+'</button></td>'
+            +'</tr>').join('')
+        +'</tbody></table></div>'
+      :'<div class="card"><div class="empty"><i class="ti ti-list-check"></i>No AOs logged for this case.</div></div>');
+
+  goPage('detail',null);
+  document.getElementById('rp-name').textContent=c.name;
+  const f=cas[0]||{};
+  document.getElementById('rp-ao').textContent=(f.topic||f.title||'—')+' · '+(f.area||'');
+  // Case stats panel
+  const sb=document.getElementById('rp-stats-body');
+  if(sb){
+    sb.innerHTML=
+      '<div class="evr"><span>AOs logged</span><span style="font-size:11px;font-weight:700;color:var(--body)">'+total+'</span></div>'
+      +'<div class="evr"><span>NA / NC</span><span style="font-size:11px;font-weight:700;color:#dc2626">'+nn+'</span></div>'
+      +'<div class="evr"><span>RC</span><span style="font-size:11px;font-weight:700;color:#b45309">'+rr+'</span></div>'
+      +'<div class="evr"><span>C / CD</span><span style="font-size:11px;font-weight:700;color:#047857">'+cc+'</span></div>'
+      +'<div class="evr"><span>Avg C %</span><span style="font-size:11px;font-weight:700;color:var(--indigo)">'+avgC+'</span></div>'
+      +'<div class="evr"><span>Avg RC+ %</span><span style="font-size:11px;font-weight:700;color:var(--indigo)">'+avgRC+'</span></div>'
+      +'<div class="evr" style="border-bottom:none"><span>Score</span><span style="font-size:11px;font-weight:700;color:var(--body)">'+totalScore+'/'+maxScore+' ('+scorePct+'%)</span></div>';
+  }
+}
+
+/* ─── Modal: topics dropdown ────────────────────────────────── */
+function popTop(){
+  const a=document.getElementById('na-a').value;
+  const s=document.getElementById('na-tp');
+  s.innerHTML=getTopicsForArea(a).map(t=>'<option>'+esc(t)+'</option>').join('');
+}
+
+/* ─── Modal: open add ───────────────────────────────────────── */
+function openAdd(){
+  eId=null;tAOs=[];
+  document.getElementById('m-title').innerHTML=moonSVG()+' Add case';
+  ['f-nm','f-nt'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('f-dt').value=new Date().toISOString().slice(0,10);
+  document.getElementById('f-dy').value='Day 3';
+  document.getElementById('f-at').value='First';
+  document.getElementById('f-rv').value='No';
+  document.getElementById('f-db').value='No';
+  document.getElementById('na-a').value='FR';
+  popTop();rAOM();
+  document.getElementById('modal-ov').classList.add('open');
+  setTimeout(()=>document.getElementById('f-nm').focus(),80);
+}
+
+/* ─── Modal: open edit ──────────────────────────────────────── */
+function editC(id){
+  const c=db.cases.find(x=>x.id===id);if(!c)return;
+  eId=id;tAOs=db.aos.filter(a=>a.case_id===id).map(a=>({...a}));
+  document.getElementById('m-title').innerHTML=moonSVG()+' Edit case';
+  document.getElementById('f-nm').value=c.name;
+  document.getElementById('f-dt').value=c.date||'';
+  document.getElementById('f-dy').value=c.day;
+  document.getElementById('f-at').value=c.attempt;
+  document.getElementById('f-rv').value=c.revised||'No';
+  document.getElementById('f-db').value=c.debriefed||'No';
+  document.getElementById('f-nt').value=c.notes||'';
+  const estd=document.getElementById('f-std');if(estd)estd.value=c.standard||'';
+  const esp=document.getElementById('f-spaced');if(esp)esp.value=c.spaced||'Attempted';
+  document.getElementById('na-a').value='FR';
+  popTop();rAOM();
+  document.getElementById('modal-ov').classList.add('open');
+}
+function moonSVG(){return '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2.5C10 2.5 6 6.5 6 10C6 12.2 7.8 14 10 14C12.2 14 14 12.2 14 10C14 6.5 10 2.5 10 2.5Z" fill="#818cf8" opacity=".80"/><circle cx="15" cy="5" r="2" fill="#fcd34d"/></svg>';}
+
+/* ─── Modal: AO rows ─────────────────────────────────────────── */
+function addAOR(){
+  const t=document.getElementById('na-t').value.trim();
+  if(!t){showToast('Enter an AO title first');return;}
+  tAOs.push({
+    id:uid(),title:t,
+    area:document.getElementById('na-a').value,
+    topic:document.getElementById('na-tp').value,
+    result:document.getElementById('na-r').value,
+    comment:document.getElementById('na-c').value.trim(),
+    debriefed:'No',case_id:''
+  });
+  document.getElementById('na-t').value='';
+  document.getElementById('na-c').value='';
+  rAOM();
+}
+function rmAO(i){tAOs.splice(i,1);rAOM();}
+function upAO(i,f,v){if(tAOs[i])tAOs[i][f]=(f==='area')?normArea(v):v;}
+
+function areaOpts(sel){const ns=normArea(sel);return ['FR','MA','Tax','Audit','SG','Finance'].map(a=>'<option'+(a===ns?' selected':'')+'>'+a+'</option>').join('');}
+function topicOpts(area,sel){return getTopicsForArea(normArea(area)).map(t=>'<option'+(t===sel?' selected':'')+'>'+t+'</option>').join('');}
+function rAOM(){
+  const tb=document.getElementById('ao-mr');
+  if(!tAOs.length){
+    tb.innerHTML='<tr><td colspan="7" style="font-size:11.5px;color:var(--hint);padding:8px 9px">No AOs yet — fill in the strip below and click Add AO.</td></tr>';
+    return;
+  }
+  tb.innerHTML=tAOs.map((a,i)=>{
+    const aOpts=areaOpts(a.area);
+    const tOpts=topicOpts(a.area,a.topic);
+    return '<tr>'
+      +'<td style="min-width:120px"><input value="'+esc(a.title)+'" onchange="upAO('+i+',\'title\',this.value)" style="width:112px"></td>'
+      +'<td><select onchange="upAO('+i+',\'area\',this.value);rAOM()" style="min-width:65px">'+aOpts+'</select></td>'
+      +'<td><select onchange="upAO('+i+',\'topic\',this.value)" style="min-width:130px">'+tOpts+'</select></td>'
+      +'<td><select onchange="upAO('+i+',\'result\',this.value)" style="min-width:68px">'+['NA/NC','RC','C','CD'].map(r=>'<option'+(a.result===r?' selected':'')+'>'+r+'</option>').join('')+'</select></td>'
+      +'<td><select onchange="upAO('+i+',\'debriefed\',this.value)" style="min-width:88px"><option'+(a.debriefed!=='Yes'?' selected':'')+' value="No">Not debriefed</option><option'+(a.debriefed==='Yes'?' selected':'')+' value="Yes">Debriefed \u2713</option></select></td>'
+      +'<td style="min-width:128px"><input value="'+esc(a.comment||'')+'" placeholder="Comment\u2026" onchange="upAO('+i+',\'comment\',this.value)" style="width:122px"></td>'
+      +'<td><button onclick="rmAO('+i+')" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:18px;line-height:1" title="Remove AO">\xd7</button></td>'
+      +'</tr>';
+  }).join('');
+}
+
+/* ─── Save / delete case ─────────────────────────────────────── */
+function saveC(){
+  const n=document.getElementById('f-nm').value.trim();
+  if(!n){showToast('Case name is required');document.getElementById('f-nm').focus();return;}
+  const id=eId||uid();
+  const fstd2=document.getElementById('f-std');const fsp2=document.getElementById('f-spaced');
+  const obj={id,name:n,date:document.getElementById('f-dt').value,day:document.getElementById('f-dy').value,attempt:document.getElementById('f-at').value,revised:document.getElementById('f-rv').value,debriefed:document.getElementById('f-db').value,notes:document.getElementById('f-nt').value,standard:fstd2?fstd2.value:'',spaced:fsp2?fsp2.value:'Attempted'};
+  if(eId){db.cases=db.cases.map(c=>c.id===eId?obj:c);db.aos=db.aos.filter(a=>a.case_id!==eId);}
+  else db.cases.push(obj);
+  tAOs.forEach(a=>db.aos.push({...a,case_id:id}));
+  sv();closeM();showToast(eId?'Case updated ✓':'Case saved ✓');
+  rdDash();rCases();
+  // If the case detail page is currently showing this case, refresh it
+  const detailPage=document.getElementById('page-detail');
+  if(detailPage&&detailPage.classList.contains('active')){
+    openDet(id);
+  }
+}
+function delC(id){
+  if(!confirm('Delete this case and all its AOs? This cannot be undone.'))return;
+  db.cases=db.cases.filter(c=>c.id!==id);
+  db.aos=db.aos.filter(a=>a.case_id!==id);
+  sv();rCases();rdDash();showToast('Case deleted');
+}
+function closeM(){document.getElementById('modal-ov').classList.remove('open');}
+
+/* ─── Export CSV ─────────────────────────────────────────────── */
+function doExport(){
+  const rows=[['case_name','case_date','day','attempt','standard','revised','debriefed','ao_title','area','topic','result','comment','ao_debriefed','ao_need_for_c','ao_gap_notes','ao_key_points']];
+  db.cases.forEach(c=>{
+    const ca=db.aos.filter(a=>a.case_id===c.id);
+    if(!ca.length)rows.push([c.name,c.date,c.day,c.attempt,c.standard||'',c.revised,c.debriefed,'','','','','','','','','']);
+    else ca.forEach(a=>rows.push([c.name,c.date,c.day,c.attempt,c.standard||'',c.revised,c.debriefed,a.title,a.area,a.topic||'',a.result,a.comment||'',a.debriefed||'No',a.needNotes||'',a.gapNotes||'',a.pointsNotes||'']));
+  });
+  const csv=rows.map(r=>r.map(v=>'"'+String(v||'').replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download='cfe_tracker_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  showToast('CSV exported ✓ — '+db.cases.length+' cases, '+db.aos.length+' AOs');
+}
+
+/* ─── Import CSV ─────────────────────────────────────────────── */
+function doImport(inp){
+  const f=inp.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      function parseCSVLine(line){
+        const res=[];let cur='',inQ=false;
+        for(let i=0;i<line.length;i++){
+          if(line[i]==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;}
+          else if(line[i]===','&&!inQ){res.push(cur.trim());cur='';}
+          else cur+=line[i];
+        }
+        res.push(cur.trim());return res;
+      }
+      const lines=e.target.result.replace(/\r/g,'').split('\n').filter(l=>l.trim());
+      const hd=parseCSVLine(lines[0]).map(h=>h.toLowerCase());
+      let added=0,aoAdded=0;
+      for(let i=1;i<lines.length;i++){
+        const cols=parseCSVLine(lines[i]);
+        const row={};hd.forEach((h,j)=>row[h]=cols[j]||'');
+        if(!row.case_name)continue;
+        let c=db.cases.find(x=>x.name===row.case_name);
+        if(!c){c={id:uid(),name:row.case_name,date:row.case_date||'',day:row.day||'Day 3',attempt:row.attempt||'First',revised:row.revised||'No',debriefed:row.debriefed||'No',notes:''};db.cases.push(c);added++;}
+        if(row.ao_title&&!db.aos.find(a=>a.case_id===c.id&&a.title===row.ao_title)){
+          db.aos.push({id:uid(),case_id:c.id,title:row.ao_title,area:normArea(row.area)||'FR',topic:row.topic||'',result:row.result||'NA/NC',comment:row.comment||'',debriefed:row.ao_debriefed||'No',needNotes:row.ao_need_for_c||'',gapNotes:row.ao_gap_notes||'',pointsNotes:row.ao_key_points||''});
+          aoAdded++;
+        }
+      }
+      sv();rdDash();
+      document.getElementById('imp-s').innerHTML='<span style="color:#047857;font-weight:700">✓ Done</span> — '+added+' new cases, '+aoAdded+' AOs added. Total: '+db.cases.length+' cases, '+db.aos.length+' AOs.';
+      showToast('Import complete ✓');
+    }catch(err){document.getElementById('imp-s').innerHTML='<span style="color:#dc2626">Error:</span> '+esc(err.message);}
+  };
+  r.readAsText(f);inp.value='';
+}
+
+/* ─── Reset all ──────────────────────────────────────────────── */
+function resetAll(){
+  if(!confirm('Permanently delete ALL cases and AOs?\n\nExport a backup first.\n\nContinue?'))return;
+  db={cases:[],aos:[],notes:'',resources:[]};sv();rdDash();rCases();rAOs();showToast('All data cleared');
+}
+
+/* ─── Learning sky ───────────────────────────────────────────── */
+function rSkyStar(el,big){
+  if(!el)return;
+  // Count C/CD results per normalized topic key
+  const ccdCounts={};
+  const attemptedKeys=new Set();
+  db.aos.forEach(a=>{
+    const key=(a.topic||a.title||'').toLowerCase();
+    if(!key)return;
+    attemptedKeys.add(key);
+    if(a.result==='C'||a.result==='CD')ccdCounts[key]=(ccdCounts[key]||0)+1;
+  });
+  const masteredKeys=Object.keys(ccdCounts).filter(k=>ccdCounts[k]>=3);
+  const fs=big?13:9.5,lfs=big?8.5:6;
+  el.innerHTML=SKY_POS.map(s=>{
+    const nm=s.t.toLowerCase().replace(/[^a-z ]/g,'').split(' ')[0];
+    const isM=masteredKeys.some(m=>m.includes(nm)||nm.includes(m.split(' ')[0]));
+    const isA=!isM&&[...attemptedKeys].some(m=>m.includes(nm)||nm.includes(m.split(' ')[0]));
+    if(isM)return '<div title="'+esc(s.t)+' — mastered (3+ C/CD) ✓" style="position:absolute;left:'+s.x+'%;top:'+s.y+'%;transform:translate(-50%,-50%);font-size:'+fs+'px;color:#fcd34d;line-height:1;text-align:center;text-shadow:0 0 10px rgba(252,211,77,.80),0 0 20px rgba(252,211,77,.40)">★<div style="font-size:'+lfs+'px;color:rgba(252,211,77,.90);margin-top:1px;white-space:nowrap">'+esc(s.t)+'</div></div>';
+    if(isA)return '<div title="'+esc(s.t)+' — attempted (needs 3+ C/CD to glow)" style="position:absolute;left:'+s.x+'%;top:'+s.y+'%;transform:translate(-50%,-50%);font-size:'+fs+'px;color:rgba(147,197,253,.40);line-height:1;text-align:center">★<div style="font-size:'+lfs+'px;color:rgba(147,197,253,.28);margin-top:1px;white-space:nowrap">'+esc(s.t)+'</div></div>';
+    return '<div title="'+esc(s.t)+' — not started" style="position:absolute;left:'+s.x+'%;top:'+s.y+'%;transform:translate(-50%,-50%);font-size:'+(fs-2)+'px;color:rgba(100,149,237,.15)">·</div>';
+  }).join('');
+  if(big){const cnt=masteredKeys.length;const el2=document.getElementById('sky-count');if(el2)el2.textContent=cnt+' topic'+(cnt!==1?'s':'')+' mastered (3+ C/CD)';}
+}
+
+/* ─── Analytics ──────────────────────────────────────────────── */
+function rAnalytics(){
+  const areas=['FR','MA','Tax','Audit','SG','Finance'];
+  document.getElementById('ana-bars').innerHTML=areas.map(a=>{
+    const all=db.aos.filter(x=>x.area===a);const t=all.length;
+    const nc=all.filter(x=>x.result==='NA/NC'||x.result==='NC').length;
+    const rc=all.filter(x=>x.result==='RC').length;
+    const c=all.filter(x=>x.result==='C'||x.result==='CD').length;
+    const pct=t?Math.round(c/t*100):0;
+    return '<div class="ana-bar-row">'
+      +'<span style="text-align:right;color:var(--muted);font-weight:700">'+a+'</span>'
+      +'<div style="background:rgba(175,192,255,.18);border-radius:6px;height:12px;overflow:hidden;display:flex">'
+        +(t?'<div style="width:'+Math.round(nc/t*100)+'%;background:#fca5a5;transition:width .5s"></div>'
+            +'<div style="width:'+Math.round(rc/t*100)+'%;background:#fcd34d;transition:width .5s"></div>'
+            +'<div style="width:'+Math.round(c/t*100)+'%;background:#6ee7b7;transition:width .5s"></div>'
+          :'<div style="width:100%;background:rgba(175,192,255,.12)"></div>')
+      +'</div>'
+      +'<span style="color:var(--muted);font-size:11px">'+t+' AOs · <strong style="color:var(--indigo)">'+pct+'%</strong> above RC</span>'
+      +'</div>';
+  }).join('');
+
+  // ── Per-topic stats: count, avg score%, % C/CD, % NA/NC, result mix ──
+  const SMAP2={'NA/NC':0,'NC':0,'RC':1,'C':2,'CD':2};
+  const topicMap={};
+  db.aos.forEach(a=>{
+    const key=a.topic||a.title||'(untitled)';
+    if(!topicMap[key])topicMap[key]={topic:key,area:a.area,count:0,score:0,maxScore:0,cd:0,nc:0,rc:0,c:0};
+    const t=topicMap[key];
+    t.count++;
+    t.score+=(SMAP2[a.result]||0);
+    t.maxScore+=2;
+    if(a.result==='CD')t.cd++;
+    else if(a.result==='C')t.c++;
+    else if(a.result==='RC')t.rc++;
+    else t.nc++;
+  });
+  const topics=Object.values(topicMap).map(t=>({
+    ...t,
+    avgPct: t.maxScore?Math.round(t.score/t.maxScore*100):0,
+    ccdPct: t.count?Math.round((t.cd+t.c)/t.count*100):0,
+    ncPct: t.count?Math.round(t.nc/t.count*100):0
+  }));
+
+  // Strongest topics — top 5 by % C/CD (ties broken by avg score, then attempts)
+  const strongest=[...topics].sort((a,b)=>b.ccdPct-a.ccdPct||b.avgPct-a.avgPct||b.count-a.count).filter(t=>t.ccdPct>0).slice(0,5);
+  document.getElementById('ana-top').innerHTML=strongest.length
+    ?strongest.map((t,i)=>'<div class="mr"><span>'+['🥇','🥈','🥉','4.','5.'][i]+' '+esc(t.topic)+' '+abadge(t.area)+'</span><span class="rb r-cd">'+t.ccdPct+'% C/CD · ×'+t.count+'</span></div>').join('')
+    :'<div style="font-size:12px;color:var(--hint)">No C/CD results yet</div>';
+
+  // Weakest topics — top 5 by % NA/NC (ties broken by attempts desc)
+  const weakest=[...topics].sort((a,b)=>b.ncPct-a.ncPct||b.count-a.count).filter(t=>t.ncPct>0).slice(0,5);
+  document.getElementById('ana-weak').innerHTML=weakest.length
+    ?weakest.map((t,i)=>'<div class="mr"><span>'+['1.','2.','3.','4.','5.'][i]+' '+esc(t.topic)+' '+abadge(t.area)+'</span><span class="rb r-nc">'+t.ncPct+'% NA/NC · ×'+t.count+'</span></div>').join('')
+    :'<div style="font-size:12px;color:var(--hint)">No NA/NC results yet</div>';
+
+  // Full topic breakdown table, sorted by attempts desc
+  const sortedTopics=[...topics].sort((a,b)=>b.count-a.count||a.topic.localeCompare(b.topic));
+  document.getElementById('ana-topic-count').textContent=sortedTopics.length+' topic'+(sortedTopics.length!==1?'s':'')+' attempted';
+  const tb=document.getElementById('ana-topic-tb');
+  tb.innerHTML=sortedTopics.length?sortedTopics.map(t=>{
+    const mix=t.count?[
+      ['#fca5a5',t.nc],['#fcd34d',t.rc],['#6ee7b7',t.c+t.cd]
+    ]:[];
+    const mixBar=mix.length?'<div style="background:rgba(175,192,255,.18);border-radius:5px;height:10px;overflow:hidden;display:flex;min-width:60px">'
+      +mix.map(([clr,v])=>'<div style="width:'+Math.round(v/t.count*100)+'%;background:'+clr+'"></div>').join('')
+      +'</div>':'—';
+    return '<tr>'
+      +'<td style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(t.topic)+'">'+esc(t.topic)+'</td>'
+      +'<td>'+abadge(t.area)+'</td>'
+      +'<td style="font-size:12px">'+t.count+'</td>'
+      +'<td style="font-size:12px;font-weight:700;color:'+(t.avgPct>=70?'#047857':t.avgPct>=40?'#b45309':'#dc2626')+'">'+t.avgPct+'%</td>'
+      +'<td style="font-size:12px">'+t.ccdPct+'%</td>'
+      +'<td>'+mixBar+'</td>'
+      +'</tr>';
+  }).join(''):'<tr><td colspan="6"><div class="empty"><i class="ti ti-chart-bar"></i>No AOs logged yet.</div></td></tr>';
+}
+
+/* ─── Topic Review ───────────────────────────────────────────── */
+const FLAG_META={
+  priority:{label:'🚩 Priority',cls:'flag-priority'},
+  watch:{label:'👀 Watch',cls:'flag-watch'},
+  strong:{label:'⭐ Strong',cls:'flag-strong'},
+  '':{label:'No flag',cls:''}
+};
+function topicKey(area,topic){return area+'::'+(topic||'');}
+
+function rReview(){
+  const fArea=(document.getElementById('rev-area')||{}).value||'';
+  const fFlag=(document.getElementById('rev-flag')||{}).value||'';
+  const fAtt=(document.getElementById('rev-attempted')||{}).value||'';
+  const q=(document.getElementById('rev-q')||{}).value?.toLowerCase()||'';
+  const areas=fArea?[fArea]:['FR','MA','Tax','Audit','SG','Finance'];
+
+  // Build topic entries: { area, topic, key, aos[], count, avgPct, ccdPct, ncPct, flag, comment }
+  let entries=[];
+  areas.forEach(area=>{
+    const topics=getTopicsForArea(area);
+    topics.forEach(topic=>{
+      const key=topicKey(area,topic);
+      const linkedAOs=db.aos.filter(a=>normArea(a.area)===area&&(a.topic||'')===topic);
+      const count=linkedAOs.length;
+      const score=linkedAOs.reduce((s,a)=>s+(SMAP[a.result]||0),0);
+      const maxScore=count*2;
+      const avgPct=maxScore?Math.round(score/maxScore*100):0;
+      const ccd=linkedAOs.filter(a=>a.result==='C'||a.result==='CD').length;
+      const nc=linkedAOs.filter(a=>a.result==='NA/NC'||a.result==='NC').length;
+      const ccdPct=count?Math.round(ccd/count*100):0;
+      const ncPct=count?Math.round(nc/count*100):0;
+      const rev=db.topicReviews[key]||{};
+      entries.push({area,topic,key,linkedAOs,count,avgPct,ccdPct,ncPct,flag:rev.flag||'',comment:rev.comment||''});
+    });
+  });
+
+  // Filters
+  entries=entries.filter(e=>{
+    if(fFlag){
+      if(fFlag==='none'){if(e.flag)return false;}
+      else if(e.flag!==fFlag)return false;
+    }
+    if(fAtt==='yes'&&e.count===0)return false;
+    if(fAtt==='no'&&e.count>0)return false;
+    if(fAtt===''&&e.count===0&&!e.flag&&!e.comment)return false; // hide untouched, unattempted noise by default
+    if(q&&!e.topic.toLowerCase().includes(q))return false;
+    return true;
+  });
+
+  // Sort: flagged priority first, then by count desc, then alpha
+  const flagRank={priority:0,watch:1,strong:2,'':3};
+  entries.sort((a,b)=>(flagRank[a.flag]-flagRank[b.flag])||(b.count-a.count)||a.topic.localeCompare(b.topic));
+
+  const list=document.getElementById('review-list');
+  if(!entries.length){
+    list.innerHTML='<div class="card"><div class="empty"><i class="ti ti-flag"></i>No topics match your filters.'
+      +(fAtt===''?'<br><span style="font-size:11px">Try "Not started only" to browse the full topic list, or add a flag/comment to a topic to pin it here.</span>':'')
+      +'</div></div>';
+    return;
+  }
+
+  list.innerHTML=entries.map(e=>{
+    const meta=FLAG_META[e.flag]||FLAG_META[''];
+    const statsHtml=e.count
+      ?'<span>'+e.count+' AO'+(e.count!==1?'s':'')+'</span><span style="color:'+(e.avgPct>=70?'#047857':e.avgPct>=40?'#b45309':'#dc2626')+';font-weight:700">'+e.avgPct+'% avg</span><span style="color:#047857">'+e.ccdPct+'% C/CD</span>'+(e.ncPct?'<span style="color:#dc2626">'+e.ncPct+'% NA/NC</span>':'')
+      :'<span style="font-style:italic">not yet attempted</span>';
+    const aosHtml=e.linkedAOs.length
+      ?'<div class="rev-aos">'+e.linkedAOs.map(a=>{
+          const c=db.cases.find(x=>x.id===a.case_id)||{};
+          return '<div class="rev-ao-row">'
+            +rb(a.result)
+            +'<button class="rev-case" onclick="openDet(\''+a.case_id+'\')">'+esc(c.name||'—')+'</button>'
+            +'<span style="color:var(--hint)">— '+esc(a.title)+'</span>'
+            +(a.comment?'<span style="color:var(--muted)">· '+esc(a.comment)+'</span>':'')
+            +(a.needNotes||a.gapNotes||a.pointsNotes?'<button class="vbtn" style="padding:1px 7px;font-size:9.5px" onclick="openAONotes(\''+a.case_id+'\',\''+a.id+'\')"><i class="ti ti-notes"></i> notes</button>':'')
+            +'</div>';
+        }).join('')+'</div>'
+      :'<div class="rev-empty-aos">No AOs logged for this topic yet — once you add one, it\'ll appear here automatically.</div>';
+
+    return '<div class="rev-card '+meta.cls+'">'
+      +'<div class="rev-head">'
+        +'<span class="rev-title">'+esc(e.topic)+'</span>'
+        +abadge(e.area)
+        +'<span class="rev-stats">'+statsHtml+'</span>'
+      +'</div>'
+      +'<select class="rev-flag-select" onchange="setTopicFlag(\''+e.area+'\',\''+esc(e.topic).replace(/'/g,"\\'")+'\',this.value)">'
+        +Object.entries(FLAG_META).map(([val,m])=>'<option value="'+val+'"'+(e.flag===val?' selected':'')+'>'+m.label+'</option>').join('')
+      +'</select>'
+      +'<textarea class="rev-comment" placeholder="Notes on this topic — patterns you notice, what to focus on next…" onchange="setTopicComment(\''+e.area+'\',\''+esc(e.topic).replace(/'/g,"\\'")+'\',this.value)">'+esc(e.comment)+'</textarea>'
+      +aosHtml
+      +'</div>';
+  }).join('');
+}
+
+function setTopicFlag(area,topic,val){
+  const key=topicKey(area,topic);
+  if(!db.topicReviews[key])db.topicReviews[key]={};
+  db.topicReviews[key].flag=val;
+  sv();rReview();
+}
+function setTopicComment(area,topic,val){
+  const key=topicKey(area,topic);
+  if(!db.topicReviews[key])db.topicReviews[key]={};
+  db.topicReviews[key].comment=val;
+  sv();showToast('Note saved ✓',1500);
+}
+
+/* ─── Notes & resources ──────────────────────────────────────── */
+function loadNotes(){
+  document.getElementById('notes-ta').value=db.notes||'';
+  renderResources();
+}
+function saveNotes(){db.notes=document.getElementById('notes-ta').value;sv();showToast('Notes saved ✓');}
+function addResource(){document.getElementById('res-add').style.display='block';document.getElementById('res-title').focus();}
+function saveResource(){
+  const t=document.getElementById('res-title').value.trim();
+  if(!t){showToast('Enter a title');return;}
+  if(!db.resources)db.resources=[];
+  db.resources.push({id:uid(),title:t,url:document.getElementById('res-url').value.trim(),desc:document.getElementById('res-desc').value.trim()});
+  ['res-title','res-url','res-desc'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('res-add').style.display='none';
+  sv();renderResources();showToast('Resource added ✓');
+}
+function delResource(id){db.resources=(db.resources||[]).filter(r=>r.id!==id);sv();renderResources();}
+function renderResources(){
+  const list=db.resources||[];
+  const el=document.getElementById('res-list');
+  el.innerHTML=list.length
+    ?list.map(r=>'<div class="mr" style="flex-direction:column;align-items:flex-start;padding:8px 0;gap:3px">'
+        +'<div style="display:flex;justify-content:space-between;width:100%;align-items:center">'
+          +(r.url?'<a href="'+esc(r.url)+'" target="_blank" style="font-weight:700;color:var(--indigo);font-size:12.5px;text-decoration:none">'+esc(r.title)+'</a>'
+                 :'<span style="font-weight:700;color:var(--body);font-size:12.5px">'+esc(r.title)+'</span>')
+          +'<button class="delbtn" onclick="delResource(\''+r.id+'\')" style="font-size:11px">Remove</button>'
+        +'</div>'
+        +(r.desc?'<span style="font-size:11.5px;color:var(--muted)">'+esc(r.desc)+'</span>':'')
+        +(r.url?'<span style="font-size:10.5px;color:var(--hint)">'+esc(r.url)+'</span>':'')
+      +'</div>').join('')
+    :'<div style="font-size:12px;color:var(--hint);padding:6px 0">No resources added yet.</div>';
+}
+
+/* ─── Score/NA‑NC hide toggle ─────────────────────────────────── */
+let scoresHidden=false;
+function toggleScoreHide(){
+  scoresHidden=!scoresHidden;
+  const eye=document.getElementById('hide-eye-icon');
+  // Blur score, NA/NC, and C cells in dashboard table
+  document.querySelectorAll('.score-cell,.nc-cell,.c-cell').forEach(td=>{
+    td.style.filter=scoresHidden?'blur(6px)':'none';
+    td.style.userSelect=scoresHidden?'none':'';
+  });
+  // Blur metric row
+  document.querySelectorAll('#m-nc,#m-rc,#m-cc,#m-avgc,#m-avgrc').forEach(el=>{
+    el.style.filter=scoresHidden?'blur(8px)':'none';
+  });
+  const btn=document.getElementById('hide-scores-btn');
+  if(btn)btn.style.opacity=scoresHidden?'1':'0.7';
+  if(eye)eye.style.display=scoresHidden?'none':'block';
+  showToast(scoresHidden?'Scores hidden ☁️':'Scores visible 👁',1400);
+}
+
+/* ─── Re-apply all hide states after DOM rebuild ───────────── */
+function applyHideStates(){
+  if(scoresHidden){
+    document.querySelectorAll('.score-cell,.nc-cell,.c-cell').forEach(td=>{
+      td.style.filter='blur(6px)';td.style.userSelect='none';
+    });
+    document.querySelectorAll('#m-nc,#m-rc,#m-cc,#m-avgc,#m-avgrc').forEach(el=>{
+      el.style.filter='blur(8px)';
+    });
+    const btn=document.getElementById('hide-scores-btn');
+    const eye=document.getElementById('hide-eye-icon');
+    if(btn)btn.style.opacity='1';
+    if(eye)eye.style.display='none';
+  }
+  Object.keys(rpHiddenState).forEach(wrapperId=>{
+    if(!rpHiddenState[wrapperId])return;
+    const wrap=document.getElementById(wrapperId);
+    const iconId=rpIconMap[wrapperId];
+    const icon=iconId?document.getElementById(iconId):null;
+    if(wrap){wrap.style.filter='blur(7px)';wrap.style.userSelect='none';wrap.style.pointerEvents='none';}
+    if(icon)icon.className='ti ti-eye-off';
+  });
+}
+
+/* ─── Right panel hide toggle ──────────────────────────────── */
+const rpHiddenState={};
+const rpIconMap={};
+function toggleRpHide(wrapperId,iconId){
+  const wrap=document.getElementById(wrapperId);
+  const icon=document.getElementById(iconId);
+  if(!wrap)return;
+  const hidden=!rpHiddenState[wrapperId];
+  rpHiddenState[wrapperId]=hidden;
+  rpIconMap[wrapperId]=iconId;
+  wrap.style.filter=hidden?'blur(7px)':'none';
+  wrap.style.userSelect=hidden?'none':'';
+  wrap.style.pointerEvents=hidden?'none':'';
+  if(icon){icon.className=hidden?'ti ti-eye-off':'ti ti-eye';}
+  showToast(hidden?'Hidden ☁️':'Visible 👁',1200);
+}
+
+/* ─── Oracle card messages ─────────────────────────────────────── */
+const ORACLE_DEFAULTS={
+  do:[
+    "You're lucky, it's 1/4 — I guess it's destiny to do a case today!",
+    "Congratulations. You have unlocked:\nAnother opportunity to discover a weakness.",
+    "Go read that 5–20 page storybook.",
+    "The CFE cannot hurt you today.\nBut this case can.",
+    "You have two choices:\nDo the case.\nOr let the case destroy you later."
+  ],
+  no:[
+    "Breaktime, time to play!",
+    "Existing mistakes are still waiting for customer service.",
+    "Another case is not the answer to every problem."
+  ],
+  wild:[
+    "This AO tracker remembers everything. Unlike you.",
+    '"I knew that." Tragic. Useless but true.',
+    '"Imagine how powerful you\'ll feel after finishing this case~~"\nThat\'s not motivation, it\'s bullshit.',
+    "If procrastination were a Day 2 elective, you would have depth.",
+    "Nice try though."
+  ]
+};
+function getOracleMsgs(){
+  const s=CFG.oracleMsgs;
+  if(!s)return ORACLE_DEFAULTS;
+  return{
+    do:s.do&&s.do.length?s.do:ORACLE_DEFAULTS.do,
+    no:s.no&&s.no.length?s.no:ORACLE_DEFAULTS.no,
+    wild:s.wild&&s.wild.length?s.wild:ORACLE_DEFAULTS.wild
+  };
+}
+function saveOracleMsgs(){
+  if(!CFG.oracleMsgs)CFG.oracleMsgs={};
+  const g=id=>(document.getElementById(id)||{}).value||'';
+  CFG.oracleMsgs.do=g('set-do-msgs').split('\n').map(s=>s.trim()).filter(Boolean);
+  CFG.oracleMsgs.no=g('set-no-msgs').split('\n').map(s=>s.trim()).filter(Boolean);
+  CFG.oracleMsgs.wild=g('set-wild-msgs').split('\n').map(s=>s.trim()).filter(Boolean);
+  svSettings(CFG);showToast('Oracle messages saved ✓');
+}
+function loadOracleMsgsUI(){
+  const msgs=getOracleMsgs();
+  const s=id=>document.getElementById(id);
+  if(s('set-do-msgs'))s('set-do-msgs').value=msgs.do.join('\n');
+  if(s('set-no-msgs'))s('set-no-msgs').value=msgs.no.join('\n');
+  if(s('set-wild-msgs'))s('set-wild-msgs').value=msgs.wild.join('\n');
+}
+
+/* ─── Oracle card draw engine ──────────────────────────────────── */
+let oracleCards=[];
+function pickRandom(arr){return arr[Math.floor(Math.random()*arr.length)];}
+function drawCard(){
+  const msgs=getOracleMsgs();
+  const isDo=Math.random()<0.25;
+  const type=isDo?'do':'no';
+  // Wildcard messages merge into the pool — any line can appear on any card type
+  const combinedPool=[...msgs[type],...msgs.wild];
+  const msg=pickRandom(combinedPool);
+  return{type,msg,revealed:false};
+}
+function shuffleOracle(){
+  oracleCards=[drawCard(),drawCard(),drawCard(),drawCard()];
+  renderOracleDeck();
+  showToast('Cards shuffled — choose your fate ✨',1800);
+}
+function revealCard(i){
+  if(!oracleCards[i]||oracleCards[i].revealed)return;
+  oracleCards[i].revealed=true;
+  renderOracleDeck();
+}
+function moonCloudSVG(type){
+  const glowClr=type==='do'?'rgba(252,211,77,0.45)':'rgba(165,180,252,0.35)';
+  const moonClr=type==='do'?'#e8e0d0':'#c8d4f0';
+  return `<svg width="82" height="74" viewBox="0 0 82 74" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs><filter id="gl${type}"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+    <circle cx="41" cy="29" r="22" fill="${glowClr}" filter="url(#gl${type})"/>
+    <circle cx="14" cy="10" r="1.5" fill="rgba(255,255,255,0.8)" class="star-twinkle"/>
+    <circle cx="67" cy="8" r="1.2" fill="rgba(255,255,255,0.7)" class="star-twinkle" style="animation-delay:.6s"/>
+    <circle cx="60" cy="20" r="1" fill="rgba(255,255,255,0.6)" class="star-twinkle" style="animation-delay:1.2s"/>
+    <circle cx="22" cy="17" r="1.3" fill="rgba(255,255,255,0.65)" class="star-twinkle" style="animation-delay:.3s"/>
+    <line x1="14" y1="10" x2="22" y2="17" stroke="rgba(165,180,255,0.22)" stroke-width="0.5"/>
+    <line x1="67" y1="8" x2="60" y2="20" stroke="rgba(165,180,255,0.22)" stroke-width="0.5"/>
+    <path d="M41 11 C31 11 23 19 23 29 C23 39 31 47 41 47 C47 47 53 44 56 39 C51 41 46 40 42 37 C35 32 34 23 38 17 C39 14 40 12 41 11Z" fill="${moonClr}" opacity="0.93"/>
+    <circle cx="35" cy="31" r="1.5" fill="rgba(60,80,120,0.55)"/>
+    <circle cx="43" cy="31" r="1.5" fill="rgba(60,80,120,0.55)"/>
+    <path d="M32 30 Q35 29 38 30" stroke="rgba(60,80,120,0.45)" stroke-width="0.8" fill="none"/>
+    <path d="M40 30 Q43 29 46.5 30" stroke="rgba(60,80,120,0.45)" stroke-width="0.8" fill="none"/>
+    <circle cx="30" cy="34" r="2.5" fill="rgba(255,140,140,0.22)"/>
+    <ellipse cx="41" cy="57" rx="22" ry="10" fill="rgba(195,210,240,0.52)"/>
+    <ellipse cx="29" cy="59" rx="14" ry="8" fill="rgba(208,220,248,0.62)"/>
+    <ellipse cx="53" cy="58" rx="13" ry="7.5" fill="rgba(204,216,245,0.60)"/>
+    <ellipse cx="41" cy="61" rx="20" ry="8" fill="rgba(228,233,255,0.82)"/>
+    ${type==='do'?'<path d="M63 22 L64.5 27 L69 27 L65.5 30 L66.7 34.5 L63 32 L59.3 34.5 L60.5 30 L57 27 L61.5 27Z" fill="rgba(252,211,77,0.88)"/>':'<ellipse cx="64" cy="27" rx="5" ry="3.5" stroke="rgba(165,180,252,0.55)" stroke-width="0.8" fill="none"/><circle cx="64" cy="27" r="1.5" fill="rgba(165,180,252,0.45)"/>'}
+  </svg>`;
+}
+function cardBackSVG(){
+  return `<svg width="100%" height="100%" viewBox="0 0 100 158" fill="none" style="position:absolute;inset:0;border-radius:10px">
+    <rect x="3" y="3" width="94" height="152" rx="8" stroke="rgba(165,180,255,0.28)" stroke-width="0.8" fill="none"/>
+    <rect x="6" y="6" width="88" height="146" rx="6" stroke="rgba(165,180,255,0.12)" stroke-width="0.5" fill="none"/>
+    <path d="M14 14 L15.5 18 L19 18 L16.2 20.5 L17.2 24 L14 22 L10.8 24 L11.8 20.5 L9 18 L12.5 18Z" fill="rgba(252,211,77,0.6)"/>
+    <path d="M86 14 L87.5 18 L91 18 L88.2 20.5 L89.2 24 L86 22 L82.8 24 L83.8 20.5 L81 18 L84.5 18Z" fill="rgba(252,211,77,0.6)"/>
+    <path d="M14 136 L15.5 140 L19 140 L16.2 142.5 L17.2 146 L14 144 L10.8 146 L11.8 142.5 L9 140 L12.5 140Z" fill="rgba(165,180,252,0.5)"/>
+    <path d="M86 136 L87.5 140 L91 140 L88.2 142.5 L89.2 146 L86 144 L82.8 146 L83.8 142.5 L81 140 L84.5 140Z" fill="rgba(165,180,252,0.5)"/>
+    <line x1="25" y1="44" x2="38" y2="54" stroke="rgba(165,180,255,0.18)" stroke-width="0.5"/>
+    <line x1="38" y1="54" x2="54" y2="40" stroke="rgba(165,180,255,0.18)" stroke-width="0.5"/>
+    <line x1="54" y1="40" x2="68" y2="50" stroke="rgba(165,180,255,0.18)" stroke-width="0.5"/>
+    <line x1="30" y1="88" x2="50" y2="98" stroke="rgba(165,180,255,0.14)" stroke-width="0.5"/>
+    <line x1="50" y1="98" x2="64" y2="86" stroke="rgba(165,180,255,0.14)" stroke-width="0.5"/>
+    <circle cx="25" cy="44" r="1.5" fill="rgba(255,255,255,0.5)"/>
+    <circle cx="38" cy="54" r="1" fill="rgba(255,255,255,0.4)"/>
+    <circle cx="54" cy="40" r="1.5" fill="rgba(255,255,255,0.5)"/>
+    <circle cx="68" cy="50" r="1" fill="rgba(255,255,255,0.35)"/>
+    <circle cx="30" cy="88" r="1" fill="rgba(255,255,255,0.38)"/>
+    <circle cx="50" cy="98" r="1.5" fill="rgba(255,255,255,0.44)"/>
+    <circle cx="64" cy="86" r="1" fill="rgba(255,255,255,0.36)"/>
+    <circle cx="18" cy="70" r="1" fill="rgba(165,180,252,0.5)"/>
+    <circle cx="78" cy="72" r="1.2" fill="rgba(165,180,252,0.42)"/>
+    <path d="M50 64 C42 64 36 70 36 78 C36 86 42 92 50 92 C55 92 59 89 61 85 C57 87 53 86 50 83 C44 79 44 71 48 67 C49 65 49 64 50 64Z" fill="rgba(165,180,252,0.10)"/>
+    <ellipse cx="50" cy="128" rx="18" ry="9" fill="rgba(200,210,240,0.10)"/>
+    <ellipse cx="40" cy="130" rx="12" ry="7" fill="rgba(200,210,240,0.08)"/>
+    <ellipse cx="60" cy="129" rx="11" ry="6.5" fill="rgba(200,210,240,0.08)"/>
+    <ellipse cx="50" cy="28" rx="7" ry="4.5" stroke="rgba(165,180,252,0.32)" stroke-width="0.8" fill="none"/>
+    <circle cx="50" cy="28" r="2" fill="rgba(165,180,252,0.22)"/>
+    <circle cx="50" cy="28" r="0.8" fill="rgba(165,180,252,0.45)"/>
+  </svg>`;
+}
+function renderOracleDeck(){
+  const deck=document.getElementById('oracle-deck');
+  if(!deck)return;
+  if(!oracleCards.length){return;}
+  deck.innerHTML=oracleCards.map((card,i)=>{
+    const typeLabel=card.type==='do'?'THE ORACLE SPEAKS':'THE ORACLE RESTS';
+    const typeSub=card.type==='do'?'✦ Do the case! ✦':'☁ No cases today';
+    const bgStyle=card.type==='do'
+      ?'background:linear-gradient(165deg,#1a2c0e 0%,#1e3810 40%,#28500f 65%,#1a2c0e 100%)'
+      :'background:linear-gradient(165deg,#0c1535 0%,#101e52 40%,#182d6a 70%,#0c1535 100%)';
+    const accentClr=card.type==='do'?'252,211,77':'165,180,252';
+    return `<div class="oracle-card${card.revealed?' flipped':''}" onclick="revealCard(${i})">
+      <div class="card-face card-back">
+        ${cardBackSVG()}
+        <div class="card-back-inner">
+          <div style="font-size:8.5px;letter-spacing:0.08em;color:rgba(165,180,252,0.65);text-align:center;font-weight:700;text-transform:uppercase;position:relative;z-index:1">Oracle of<br>the CFE</div>
+          <div style="position:relative;z-index:1">${moonCloudSVG('back')}</div>
+          <div style="font-size:8px;color:rgba(165,180,252,0.45);text-align:center;letter-spacing:0.05em;position:relative;z-index:1">✦ click to reveal ✦</div>
+        </div>
+      </div>
+      <div class="card-face card-front" style="${bgStyle}">
+        <div class="card-front-inner">
+          <svg width="100%" height="100%" viewBox="0 0 170 240" fill="none" style="position:absolute;inset:0;pointer-events:none;z-index:0">
+            <rect x="3" y="3" width="124" height="184" rx="11" stroke="rgba(${accentClr},0.32)" stroke-width="1.2" fill="none"/>
+            <rect x="6" y="6" width="118" height="178" rx="8" stroke="rgba(${accentClr},0.14)" stroke-width="0.5" fill="none"/>
+            <path d="M16 16 L18 21 L23 21 L19.5 24 L20.8 29 L16 26.5 L11.2 29 L12.5 24 L9 21 L14 21Z" fill="rgba(${accentClr},${card.type==='do'?'0.75':'0.45'})"/>
+            <path d="M114 16 L116 21 L121 21 L117.5 24 L118.8 29 L114 26.5 L109.2 29 L110.5 24 L107 21 L112 21Z" fill="rgba(${accentClr},${card.type==='do'?'0.75':'0.45'})"/>
+            <path d="M16 162 L18 167 L23 167 L19.5 170 L20.8 175 L16 172.5 L11.2 175 L12.5 170 L9 167 L14 167Z" fill="rgba(165,180,252,0.4)"/>
+            <path d="M114 162 L116 167 L121 167 L117.5 170 L118.8 175 L114 172.5 L109.2 175 L110.5 170 L107 167 L112 167Z" fill="rgba(165,180,252,0.4)"/>
+            <ellipse cx="65" cy="13" rx="8" ry="5" stroke="rgba(${accentClr},0.4)" stroke-width="0.8" fill="none"/>
+            <circle cx="65" cy="13" r="2.2" fill="rgba(${accentClr},0.28)"/>
+            <circle cx="65" cy="13" r="0.9" fill="rgba(${accentClr},0.55)"/>
+            <line x1="26" y1="42" x2="38" y2="54" stroke="rgba(${accentClr},0.14)" stroke-width="0.5"/>
+            <line x1="92" y1="42" x2="104" y2="54" stroke="rgba(${accentClr},0.14)" stroke-width="0.5"/>
+            <circle cx="26" cy="42" r="1" fill="rgba(255,255,255,0.25)"/>
+            <circle cx="104" cy="54" r="0.8" fill="rgba(255,255,255,0.2)"/>
+          </svg>
+          <div class="card-type-badge" style="color:rgba(${accentClr},0.72);position:relative;z-index:1">${typeLabel}</div>
+          <div class="card-moon-art" style="position:relative;z-index:1">${moonCloudSVG(card.type)}</div>
+          <div style="text-align:center;font-size:9px;font-weight:700;color:rgba(${accentClr},0.82);letter-spacing:0.05em;text-transform:uppercase;position:relative;z-index:1;margin-bottom:3px">${typeSub}</div>
+          <div class="card-msg-box" style="position:relative;z-index:1">${esc(card.msg).replace(/\n/g,'<br>')}</div>
+          
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ─── Spaced review ──────────────────────────────────────────── */
+function triggerSpaced(){
+  const srNc=CFG.srNc||1, srRc=CFG.srRc||3, srC=CFG.srC||7;
+  let updated=0;
+  db.cases.forEach(c=>{
+    const ca=db.aos.filter(a=>a.case_id===c.id);
+    if(!ca.length)return;
+    const worst=ca.reduce((w,a)=>{
+      const rank={'NA/NC':0,'NC':0,'RC':1,'C':2,'CD':3};
+      return (rank[a.result]||0)<(rank[w.result]||0)?a:w;
+    },ca[0]);
+    const today=new Date();
+    let days=0,label='Attempted';
+    if(worst.result==='NA/NC'||worst.result==='NC'){days=srNc;label='Re-Test Due';}
+    else if(worst.result==='RC'){days=srRc;label='Day '+srRc+' Re-Test';}
+    else if(worst.result==='C'){days=srC;label='Day '+srC+' Re-Test';}
+    else{label='Mastered';}
+    const rev=new Date(today);rev.setDate(rev.getDate()+days);
+    c.spaced=label;
+    c.next_rev=label==='Mastered'?'—':rev.toLocaleDateString('en-CA');
+    updated++;
+  });
+  sv();rdDash();
+  showToast('Spaced review updated — '+updated+' cases scheduled ✓',3000);
+}
+
+/* ─── AO Notes modal — "What's needed for C/RC?" ─────────────── */
+let curAONote={caseId:null,aoId:null};
+function openAONotes(caseId,aoId){
+  const c=db.cases.find(x=>x.id===caseId);
+  const a=db.aos.find(x=>x.id===aoId);
+  if(!c||!a)return;
+  curAONote={caseId,aoId};
+  document.getElementById('aon-title').textContent=a.title||'AO Notes';
+  document.getElementById('aon-sub').textContent=c.name+' · '+(a.topic||'—');
+  document.getElementById('aon-summary').innerHTML=
+    abadge(a.area)+' '+rb(a.result)+
+    (a.comment?' <span style="font-size:11px;color:var(--muted)">— '+esc(a.comment)+'</span>':'');
+  document.getElementById('aon-need').value=a.needNotes||'';
+  document.getElementById('aon-gap').value=a.gapNotes||'';
+  document.getElementById('aon-points').value=a.pointsNotes||'';
+  document.getElementById('ao-notes-ov').classList.add('open');
+  setTimeout(()=>document.getElementById('aon-need').focus(),80);
+}
+function closeAONotes(){document.getElementById('ao-notes-ov').classList.remove('open');}
+function saveAONotes(){
+  const a=db.aos.find(x=>x.id===curAONote.aoId);
+  if(!a)return;
+  a.needNotes=document.getElementById('aon-need').value;
+  a.gapNotes=document.getElementById('aon-gap').value;
+  a.pointsNotes=document.getElementById('aon-points').value;
+  sv();closeAONotes();showToast('AO notes saved ✓');
+  // refresh case detail if open
+  if(curAONote.caseId)openDet(curAONote.caseId);
+}
+
+/* ─── Keyboard shortcuts ─────────────────────────────────────── */
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){closeM();closeAONotes();closeTopicsModal();}
+  if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();openAdd();}
+});
+
+/* ─── Init (Supabase auth-gated) ─────────────────────────────── */
+document.getElementById('na-a').addEventListener('change',popTop);
+
+// Show auth screen immediately while we wait for session check
+showAuthScreen();
+
+_supabase.auth.onAuthStateChange(async(event,session)=>{
+  if(session&&session.user){
+    currentUser=session.user;
+    await loadDBFromCloud();
+    hideAuthScreen();
+    applySettings();
+    rdDash();
+    popTop();
+    goPage('dashboard',document.querySelector('[data-p="dashboard"]'));
+  } else {
+    currentUser=null;
+    db={cases:[],aos:[],notes:'',resources:[],topicReviews:{}};
+    CFG={...DEF_SETTINGS};
+    showAuthScreen();
+  }
+});
+</script>
+</body>
+</html>
