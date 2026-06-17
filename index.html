@@ -1212,8 +1212,18 @@ async function doSignIn(){
   try{
     const {data,error}=await _supabase.auth.signInWithPassword({email,password:pw});
     console.log('SignIn result:',data,error);
-    if(error){showAuthMsg(error.message);btn.textContent='Sign In';btn.disabled=false;}
-    // success: onAuthStateChange will handle the redirect
+    if(error){
+      showAuthMsg(error.message);
+      btn.textContent='Sign In';btn.disabled=false;
+    } else if(data&&data.user){
+      currentUser=data.user;
+      await loadDBFromCloud();
+      hideAuthScreen();
+      applySettings();
+      rdDash();
+      popTop();
+      goPage('dashboard',document.querySelector('[data-p="dashboard"]'));
+    }
   }catch(e){
     console.error('SignIn exception:',e);
     showAuthMsg('Connection error — check console');
