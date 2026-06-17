@@ -1209,9 +1209,16 @@ async function doSignIn(){
   if(!email||!pw){showAuthMsg('Please enter email and password.');return;}
   const btn=document.querySelector('#auth-screen button');
   btn.textContent='Signing in…';btn.disabled=true;
-  const {error}=await _supabase.auth.signInWithPassword({email,password:pw});
-  btn.textContent='Sign In';btn.disabled=false;
-  if(error)showAuthMsg(error.message);
+  try{
+    const {data,error}=await _supabase.auth.signInWithPassword({email,password:pw});
+    console.log('SignIn result:',data,error);
+    if(error){showAuthMsg(error.message);btn.textContent='Sign In';btn.disabled=false;}
+    // success: onAuthStateChange will handle the redirect
+  }catch(e){
+    console.error('SignIn exception:',e);
+    showAuthMsg('Connection error — check console');
+    btn.textContent='Sign In';btn.disabled=false;
+  }
 }
 
 async function doSignUp(){
