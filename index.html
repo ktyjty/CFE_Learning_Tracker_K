@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CFE Learning Tracker</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 /* ═══════════════════════════════════════════════════════════
    BASE
@@ -383,6 +382,7 @@ tr:hover td{background:rgba(99,102,241,0.025)}
 .oracle-shuffle-btn:hover{background:rgba(99,102,241,0.1)}
 .star-twinkle{animation:twinkle 2.5s ease-in-out infinite}
 @keyframes twinkle{0%,100%{opacity:.3}50%{opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
 .constellation-line{stroke:rgba(165,180,255,0.25);stroke-width:0.5}
 
 /* ═══════════════════════════════════════════════════════════
@@ -489,7 +489,6 @@ tr:hover td{background:rgba(99,102,241,0.025)}
     <span style="color:var(--indigo);font-weight:700">78%</span>
   </div>
   <div class="t-time"><i class="ti ti-clock" style="font-size:13px"></i><span id="top-time">42 min</span></div>
-  <button class="moon-btn" onclick="signOut()" id="signout-btn" style="font-size:11px;display:none"><i class="ti ti-logout"></i> Sign out</button>
   <!-- cute cloud + sun icon (no droplet) -->
   <svg width="32" height="26" viewBox="0 0 32 26" fill="none" aria-hidden="true" style="flex-shrink:0;margin-left:4px">
     <circle cx="25" cy="5" r="3.5" fill="#fcd34d" opacity=".88"/>
@@ -545,10 +544,6 @@ tr:hover td{background:rgba(99,102,241,0.025)}
 
 <!-- ═══════════ DASHBOARD ════════════════════════════════ -->
 <div id="page-dashboard" class="pg active">
-  <div style="margin-bottom:11px;padding:8px 13px;background:rgba(251,191,36,0.10);border:0.5px solid rgba(251,191,36,0.38);border-radius:9px;display:flex;align-items:center;gap:8px;font-size:11px;color:#92400e">
-    <span style="font-weight:700">⚠️ Beta Version</span>
-    <span>This tracker is currently in testing. Please export your data regularly. We do not guarantee data retention.</span>
-  </div>
   <div class="pills">
     <button class="fp active" onclick="setF('all',this)"><i class="ti ti-layout-grid"></i>All</button>
     <button class="fp" onclick="setF('FR',this)"><i class="ti ti-book-2"></i>FR</button>
@@ -700,6 +695,31 @@ tr:hover td{background:rgba(99,102,241,0.025)}
     <p style="font-size:12.5px;color:var(--muted);margin-bottom:12px">Download all cases and AOs as a CSV file. Opens in Excel or Google Sheets, and can be re-imported later without duplicating records.</p>
     <button class="moon-btn pri" onclick="doExport()"><i class="ti ti-download"></i>Export to CSV</button>
   </div>
+
+  <!-- ── NEW: Rubric import ─────────────────────────────────── -->
+  <div class="card" style="border:1.5px solid rgba(99,102,241,0.25);background:rgba(238,240,255,0.55)">
+    <div class="card-head" style="margin-bottom:9px">
+      <div class="card-title" style="font-size:13px">
+        <i class="ti ti-table-import" style="color:#6366f1"></i>
+        Import from case rubric (Word or Excel)
+        <span style="font-size:10px;background:#6366f1;color:#fff;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:6px">NEW</span>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:8px">Upload your marking rubric — either a <strong>Word</strong> (.docx) or <strong>Excel</strong> (.xlsx) feedback guide your tutor fills in. The tracker will automatically extract the case name, AO titles, areas, topics, results, and tutor feedback — then show you a preview to verify and edit before saving.</p>
+    <div style="font-size:11.5px;color:var(--muted);background:rgba(255,255,255,0.70);border-radius:8px;padding:9px 11px;margin-bottom:10px;border:0.5px solid rgba(175,192,255,0.3)">
+      <strong style="color:var(--body)">What gets extracted automatically:</strong>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-top:5px">
+        <span>✓ Case name</span><span>✓ AO titles (AO1, AO2…)</span>
+        <span>✓ Competency area (FR, MA…)</span><span>✓ Topic</span>
+        <span>✓ Result (NC/RC/C/CD)</span><span>✓ Tutor feedback comments</span>
+        <span>✓ Day (Day 1/2/3)</span><span>✓ Score summary</span>
+      </div>
+    </div>
+    <input type="file" id="rubric-f" accept=".xlsx,.xls,.docx,.doc" style="font-size:12px;font-family:var(--font)" onchange="parseRubric(this)">
+    <div style="font-size:10.5px;color:var(--hint);margin-top:5px">Accepts Word (.docx) and Excel (.xlsx / .xls) marking rubrics.</div>
+    <div id="rubric-status" style="margin-top:9px;font-size:12px;color:var(--muted)"></div>
+  </div>
+
   <div class="card">
     <div class="card-title" style="font-size:13px;margin-bottom:9px"><i class="ti ti-upload" style="color:#818cf8"></i>Import from CSV</div>
     <p style="font-size:12px;color:var(--muted);margin-bottom:7px"><strong>Required columns:</strong> <code style="font-size:10px;background:#f1f5f9;padding:2px 6px;border-radius:4px">case_name, case_date, day, attempt, revised, debriefed, ao_title, area, topic, result, comment, ao_debriefed</code></p>
@@ -1069,6 +1089,57 @@ tr:hover td{background:rgba(99,102,241,0.025)}
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════
+     RUBRIC IMPORT PREVIEW MODAL
+═══════════════════════════════════════════════════════════ -->
+<div class="moverlay" id="rubric-ov" onclick="if(event.target===this)closeRubricModal()">
+  <div class="mbox" style="width:680px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+      <div>
+        <h2 style="margin-bottom:3px"><i class="ti ti-table-import" style="color:#6366f1;font-size:18px"></i> Rubric import — verify & edit</h2>
+        <div style="font-size:11.5px;color:var(--hint)">Review what was extracted. Edit any field before saving to your tracker.</div>
+      </div>
+      <button onclick="closeRubricModal()" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:26px;line-height:1;padding:0 0 0 12px;margin-top:-2px" title="Close">×</button>
+    </div>
+
+    <!-- Case info row -->
+    <div style="background:rgba(99,102,241,0.06);border:0.5px solid rgba(99,102,241,0.18);border-radius:10px;padding:12px 14px;margin-bottom:12px">
+      <div class="sec-lbl" style="margin-bottom:8px">Case information</div>
+      <div class="fgrid">
+        <div class="frow" style="margin-bottom:0"><label>Case name</label><input id="rb-case-name" type="text" placeholder="Case name…"></div>
+        <div class="frow" style="margin-bottom:0"><label>Date</label><input id="rb-case-date" type="date"></div>
+        <div class="frow" style="margin-bottom:0;margin-top:9px"><label>Day</label><select id="rb-case-day"><option>Day 1</option><option>Day 2</option><option selected>Day 3</option></select></div>
+        <div class="frow" style="margin-bottom:0;margin-top:9px"><label>Attempt</label><select id="rb-case-attempt"><option value="First">First attempt</option><option value="Redo">Redo</option></select></div>
+      </div>
+    </div>
+
+    <!-- AOs preview table -->
+    <div class="sec-lbl" style="margin-bottom:7px">Assessment opportunities extracted — <span id="rb-ao-count" style="color:var(--indigo)">0 AOs</span></div>
+    <div style="overflow-x:auto;max-height:380px;overflow-y:auto;border:0.5px solid rgba(175,192,255,0.25);border-radius:9px">
+      <table class="ao-tbl" style="font-size:12px">
+        <thead style="position:sticky;top:0;background:#f8f9ff;z-index:1">
+          <tr>
+            <th style="width:5%">#</th>
+            <th style="width:24%">AO title</th>
+            <th style="width:9%">Area</th>
+            <th style="width:16%">Topic</th>
+            <th style="width:8%">Result</th>
+            <th style="width:8%">Debriefed</th>
+            <th style="width:30%">Tutor feedback (→ comment)</th>
+          </tr>
+        </thead>
+        <tbody id="rb-ao-tbody"></tbody>
+      </table>
+    </div>
+    <div style="font-size:10.5px;color:var(--hint);margin-top:6px">✏️ Every cell is editable — click to change before saving.</div>
+
+    <div class="mfoot">
+      <button onclick="closeRubricModal()">Cancel</button>
+      <button class="pri" onclick="saveRubricImport()"><i class="ti ti-device-floppy" style="font-size:13px"></i> Save to tracker</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
      TOPIC LABELS EDIT MODAL
 ═══════════════════════════════════════════════════════════ -->
 <div class="moverlay" id="topics-ov" onclick="if(event.target===this)closeTopicsModal()">
@@ -1120,202 +1191,23 @@ const SKY_POS=[
   {t:'WACC',x:75,y:35},{t:'Provisions',x:7,y:38},{t:'EPS',x:95,y:42}
 ];
 
-/* ─── Supabase 配置 ─────────────────────────────────────────── */
-// 👇 把下面两行换成你自己的 Supabase 项目 URL 和 anon key
-const SUPABASE_URL = 'https://fmdywtsnqxvwdpfgsddy.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_GPg_4TWiJeW1pOwrH88YfA_so3jnfgV';
-// Safari-compatible in-memory storage
-const _memStorage={_data:{},getItem(k){return this._data[k]??null},setItem(k,v){this._data[k]=v},removeItem(k){delete this._data[k]}};
-const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: {
-    storage: _memStorage,
-    persistSession: false,
-    autoRefreshToken: true,
-    detectSessionInUrl: false
-  }
-});
-
-// 测试连接
-_supabase.auth.getSession().then(({data,error})=>{
-  console.log('Supabase session check:', data, error);
-});
-let currentUser = null;
-
-/* ─── Auth UI ───────────────────────────────────────────────── */
-function showAuthScreen(){
-  document.querySelector('.app').style.display='none';
-  let authEl=document.getElementById('auth-screen');
-  if(!authEl){
-    authEl=document.createElement('div');
-    authEl.id='auth-screen';
-    authEl.innerHTML=`
-    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;
-      background:radial-gradient(ellipse 90% 55% at 8% 6%,rgba(255,215,185,.50) 0%,transparent 58%),
-      radial-gradient(ellipse 65% 45% at 92% 4%,rgba(225,210,255,.55) 0%,transparent 52%),
-      linear-gradient(155deg,#e6eaf9 0%,#dce3f7 22%,#ede9fb 48%,#e2eaf8 75%,#dde4f7 100%)">
-      <div style="background:#fff;border-radius:18px;padding:36px 40px;width:380px;max-width:94vw;
-        box-shadow:0 16px 60px rgba(99,102,241,.14);border:0.5px solid rgba(175,192,255,.4)">
-        <div style="text-align:center;margin-bottom:28px">
-          <div style="font-size:28px;margin-bottom:8px">📚</div>
-          <div style="font-size:17px;font-weight:700;color:#4f46e5;letter-spacing:-.01em">CFE Learning Tracker</div>
-          <div style="font-size:12px;color:#5a6a82;margin-top:4px">Sign in to access your data</div>
-        </div>
-        <div id="auth-msg" style="font-size:12px;margin-bottom:12px;text-align:center;padding:8px 12px;border-radius:8px;display:none"></div>
-        <div style="margin-bottom:13px">
-          <label style="font-size:10.5px;font-weight:700;color:#5a6a82;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Email</label>
-          <input id="auth-email" type="email" placeholder="you@example.com" autocomplete="email"
-            style="width:100%;padding:9px 12px;border:0.5px solid rgba(175,192,255,.5);border-radius:8px;
-            font-size:13px;font-family:inherit;box-sizing:border-box;outline:none"
-            onkeydown="if(event.key==='Enter')doSignIn()">
-        </div>
-        <div style="margin-bottom:22px">
-          <label style="font-size:10.5px;font-weight:700;color:#5a6a82;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Password</label>
-          <input id="auth-pw" type="password" placeholder="••••••••" autocomplete="current-password"
-            style="width:100%;padding:9px 12px;border:0.5px solid rgba(175,192,255,.5);border-radius:8px;
-            font-size:13px;font-family:inherit;box-sizing:border-box;outline:none"
-            onkeydown="if(event.key==='Enter')doSignIn()">
-        </div>
-        <button onclick="doSignIn()" style="width:100%;background:linear-gradient(135deg,#6366f1,#818cf8);
-          color:#fff;border:none;border-radius:9px;padding:12px;font-size:13px;font-family:inherit;
-          font-weight:700;cursor:pointer;margin-bottom:10px;transition:opacity .12s" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
-          Sign In
-        </button>
-        <button onclick="doSignUp()" style="width:100%;background:#fff;color:#4f46e5;
-          border:0.5px solid rgba(99,102,241,.3);border-radius:9px;padding:11px;
-          font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;transition:background .12s"
-          onmouseover="this.style.background='rgba(99,102,241,.06)'" onmouseout="this.style.background='#fff'">
-          Create Account
-        </button>
-        <div style="text-align:center;margin-top:14px">
-          <button onclick="doForgot()" style="background:none;border:none;color:#818cf8;font-size:11.5px;cursor:pointer;font-family:inherit">Forgot password?</button>
-        </div>
-        <div style="margin-top:18px;padding:9px 12px;background:rgba(251,191,36,0.12);border:0.5px solid rgba(251,191,36,0.4);border-radius:8px;text-align:center">
-          <div style="font-size:11px;font-weight:700;color:#92400e;margin-bottom:2px">⚠️ Beta Version</div>
-          <div style="font-size:10.5px;color:#a16207;line-height:1.5">This tracker is currently in testing. Please export your data regularly. We do not guarantee data retention.</div>
-        </div>
-      </div>
-    </div>`;
-    document.body.appendChild(authEl);
-  }
-  authEl.style.display='block';
+/* ─── Data layer ───────────────────────────────────────────── */
+function loadDB(){
+  try{ return JSON.parse(localStorage.getItem('cfe_v5')||'null')||{cases:[],aos:[],notes:'',resources:[],topicReviews:{}}; }
+  catch(e){ return {cases:[],aos:[],notes:'',resources:[],topicReviews:{}}; }
 }
-
-function hideAuthScreen(){
-  const el=document.getElementById('auth-screen');
-  if(el)el.style.display='none';
-  document.querySelector('.app').style.display='flex';
-  const btn=document.getElementById('signout-btn');
-  if(btn)btn.style.display='flex';
-}
-
-function showAuthMsg(msg,type='error'){
-  const el=document.getElementById('auth-msg');
-  if(!el)return;
-  el.textContent=msg;
-  el.style.display='block';
-  el.style.background=type==='success'?'#d1fae5':'#fee2e2';
-  el.style.color=type==='success'?'#065f46':'#c92222';
-}
-
-async function doSignIn(){
-  const email=(document.getElementById('auth-email')||{}).value||'';
-  const pw=(document.getElementById('auth-pw')||{}).value||'';
-  if(!email||!pw){showAuthMsg('Please enter email and password.');return;}
-  const btn=document.querySelector('#auth-screen button');
-  btn.textContent='Signing in…';btn.disabled=true;
-  try{
-    console.log('Attempting sign in for:', email);
-    const {data,error}=await _supabase.auth.signInWithPassword({email,password:pw});
-    console.log('SignIn data:', JSON.stringify(data));
-    console.log('SignIn error:', JSON.stringify(error));
-    if(error){
-      showAuthMsg(error.message);
-      btn.textContent='Sign In';btn.disabled=false;
-    } else if(data&&data.user){
-      console.log('User found, loading dashboard...');
-      currentUser=data.user;
-      await loadDBFromCloud();
-      hideAuthScreen();
-      applySettings();
-      rdDash();
-      popTop();
-      goPage('dashboard',document.querySelector('[data-p="dashboard"]'));
-    } else {
-      console.log('No user in response, data was:', data);
-      showAuthMsg('Login failed — no user returned');
-      btn.textContent='Sign In';btn.disabled=false;
-    }
-  }catch(e){
-    console.error('SignIn exception:', e.message, e.stack);
-    showAuthMsg('Error: '+e.message);
-    btn.textContent='Sign In';btn.disabled=false;
-  }
-}
-
-async function doSignUp(){
-  const email=(document.getElementById('auth-email')||{}).value||'';
-  const pw=(document.getElementById('auth-pw')||{}).value||'';
-  if(!email||!pw){showAuthMsg('Please enter email and password.');return;}
-  if(pw.length<6){showAuthMsg('Password must be at least 6 characters.');return;}
-  const {error}=await _supabase.auth.signUp({email,password:pw});
-  if(error)showAuthMsg(error.message);
-  else showAuthMsg('Account created! Check your email to confirm, or sign in if confirmation is turned off.','success');
-}
-
-async function doForgot(){
-  const email=(document.getElementById('auth-email')||{}).value||'';
-  if(!email){showAuthMsg('Enter your email address first.');return;}
-  const {error}=await _supabase.auth.resetPasswordForEmail(email);
-  if(error)showAuthMsg(error.message);
-  else showAuthMsg('Password reset email sent — check your inbox.','success');
-}
-
-async function signOut(){
-  await _supabase.auth.signOut();
-  const btn=document.getElementById('signout-btn');
-  if(btn)btn.style.display='none';
-  db={cases:[],aos:[],notes:'',resources:[],topicReviews:{}};
-  CFG={...DEF_SETTINGS};
-  currentUser=null;
-  showAuthScreen();
-}
-
-/* ─── Data layer (Supabase cloud) ───────────────────────────── */
-function loadDB(){ return {cases:[],aos:[],notes:'',resources:[],topicReviews:{}}; }
 let db=loadDB();
-
-async function loadDBFromCloud(){
-  if(!currentUser)return;
-  const {data,error}=await _supabase
-    .from('user_data')
-    .select('data,settings')
-    .eq('user_id',currentUser.id)
-    .single();
-  if(data&&data.data){
-    db=data.data;
-    if(!db.topicReviews)db.topicReviews={};
-    if(!db.resources)db.resources=[];
-    CFG=Object.assign({},DEF_SETTINGS,data.settings||{});
-  }
-}
-
-async function sv(){
-  if(!currentUser)return;
-  try{
-    await _supabase.from('user_data').upsert({
-      user_id:currentUser.id,
-      data:db,
-      settings:CFG,
-      updated_at:new Date().toISOString()
-    },{onConflict:'user_id'});
-  }catch(e){showToast('Save error — check your connection');}
-}
-
-/* Settings (kept in cloud via sv()) */
+if(!db.topicReviews)db.topicReviews={};
 let eId=null,tAOs=[],aF='all';
+function sv(){
+  try{ localStorage.setItem('cfe_v5',JSON.stringify(db)); }
+  catch(e){ showToast('Storage full — export to backup!'); }
+}
+
+/* Settings */
 const DEF_SETTINGS={name:'future CPA',msg:'small steps today, massive impact tomorrow',focus:'Focus: outline one AO — 5 min',cardT:'Keep going! ✨',cardB:"Progress is progress, no matter how small. You're building mastery.",topicLists:{}};
-function loadSettings(){ return {...DEF_SETTINGS}; }
-function svSettings(s){ CFG=s; sv(); }
+function loadSettings(){ try{return Object.assign({},DEF_SETTINGS,JSON.parse(localStorage.getItem('cfe_settings')||'{}'));}catch(e){return {...DEF_SETTINGS};} }
+function svSettings(s){ try{localStorage.setItem('cfe_settings',JSON.stringify(s));}catch(e){} }
 let CFG=loadSettings();
 
 function applySettings(){
@@ -1531,6 +1423,21 @@ function caseScoreInfo(caseId){
   return {total,totalScore,maxScore,scorePct,nn,rr,cc,avgC,avgRC};
 }
 
+/* Aggregate score across ALL cases (used for the dashboard's combined view) */
+function allScoreInfo(){
+  const cas=db.aos;
+  const total=cas.length;
+  const totalScore=cas.reduce((s,a)=>s+(SMAP[a.result]||0),0);
+  const maxScore=total*2;
+  const scorePct=maxScore?Math.round(totalScore/maxScore*100):0;
+  const nn=cas.filter(a=>a.result==='NA/NC'||a.result==='NC').length;
+  const rr=cas.filter(a=>a.result==='RC').length;
+  const cc=cas.filter(a=>a.result==='C'||a.result==='CD').length;
+  const avgC=total?Math.round(cc/total*100)+'%':'—';
+  const avgRC=total?Math.round((rr+cc)/total*100)+'%':'—';
+  return {total,totalScore,maxScore,scorePct,nn,rr,cc,avgC,avgRC};
+}
+
 /* ─── Dashboard ────────────────────────────────────────────── */
 function rdDash(){
   const {cases,aos}=db;
@@ -1548,7 +1455,7 @@ function rdDash(){
     if(!ca.length)return;
     caseCount++;
     const ccd=ca.filter(a=>a.result==='C'||a.result==='CD').length;
-    const rcup=ca.filter(a=>a.result!=='NA/NC').length;
+    const rcup=ca.filter(a=>a.result==='RC'||a.result==='C'||a.result==='CD').length;
     sumC+=ccd/ca.length;
     sumRC+=rcup/ca.length;
   });
@@ -1630,6 +1537,20 @@ function rdDash(){
     :'<div class="card" style="margin-bottom:0"><div class="empty"><i class="ti ti-folder-open"></i>No cases yet.<br><button class="lnk" style="margin-top:7px" onclick="openAdd()">Add your first case ↗</button></div></div>';
 
   rSkyStar(document.getElementById('sky-mini'),false);
+  // Right-rail "Case stats" reflects ALL cases combined on the dashboard
+  // (openDet overrides it with a single case when you view one).
+  const agg=allScoreInfo();
+  const rpName=document.getElementById('rp-name'),rpAo=document.getElementById('rp-ao'),sbAll=document.getElementById('rp-stats-body');
+  if(rpName)rpName.textContent='All cases';
+  if(rpAo)rpAo.textContent=db.cases.length?('Combined across '+db.cases.length+' case'+(db.cases.length!==1?'s':'')):'Import or add a case to begin';
+  if(sbAll)sbAll.innerHTML=
+    '<div class="evr"><span>AOs logged</span><span style="font-size:11px;font-weight:700;color:var(--body)">'+agg.total+'</span></div>'
+    +'<div class="evr"><span>NA / NC</span><span style="font-size:11px;font-weight:700;color:#dc2626">'+agg.nn+'</span></div>'
+    +'<div class="evr"><span>RC</span><span style="font-size:11px;font-weight:700;color:#b45309">'+agg.rr+'</span></div>'
+    +'<div class="evr"><span>C / CD</span><span style="font-size:11px;font-weight:700;color:#047857">'+agg.cc+'</span></div>'
+    +'<div class="evr"><span>Avg C %</span><span style="font-size:11px;font-weight:700;color:var(--indigo)">'+agg.avgC+'</span></div>'
+    +'<div class="evr"><span>Avg RC+ %</span><span style="font-size:11px;font-weight:700;color:var(--indigo)">'+agg.avgRC+'</span></div>'
+    +'<div class="evr" style="border-bottom:none"><span>Score</span><span style="font-size:11px;font-weight:700;color:var(--body)">'+agg.totalScore+'/'+agg.maxScore+' ('+agg.scorePct+'%)</span></div>';
   // Initialise oracle deck if not yet drawn
   if(!oracleCards.length) shuffleOracle();
   else renderOracleDeck();
@@ -1934,6 +1855,392 @@ function doImport(inp){
   r.readAsText(f);inp.value='';
 }
 
+/* ─── Rubric import — parse xlsx and show preview ────────────── */
+let rubricDraft={caseName:'',date:'',day:'Day 3',attempt:'First',aos:[]};
+
+function parseRubric(inp){
+  const file=inp.files[0]; if(!file)return;
+  const statusEl=document.getElementById('rubric-status');
+  const fname=(file.name||'').toLowerCase();
+  const isWord=/\.docx?$/.test(fname);
+  statusEl.innerHTML='<span style="color:var(--indigo)"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Reading rubric…</span>';
+  if(isWord){
+    // Word (.docx) — load mammoth.js dynamically
+    if(!window.mammoth){
+      const s=document.createElement('script');
+      s.src='https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js';
+      s.onload=()=>doParseRubricWord(file,statusEl);
+      s.onerror=()=>{statusEl.innerHTML='<span style="color:#dc2626">Could not load Word parser. Check your connection.</span>';};
+      document.head.appendChild(s);
+    } else {
+      doParseRubricWord(file,statusEl);
+    }
+  } else {
+    // Excel (.xlsx/.xls) — load SheetJS dynamically
+    if(!window.XLSX){
+      const s=document.createElement('script');
+      s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+      s.onload=()=>doParseRubric(file,statusEl);
+      s.onerror=()=>{statusEl.innerHTML='<span style="color:#dc2626">Could not load Excel parser. Check your connection.</span>';};
+      document.head.appendChild(s);
+    } else {
+      doParseRubric(file,statusEl);
+    }
+  }
+  inp.value='';
+}
+
+function doParseRubric(file,statusEl){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=window.XLSX.read(e.target.result,{type:'array'});
+      // Choose the right sheet: real CPA guides have a "© CPA Canada" cover
+      // sheet first, with the actual feedback guide on a later sheet. Pick the
+      // sheet containing the most AO headers (fall back to the first sheet).
+      const _aoHead=/^\s*AO\s*#?\s*\d+\s*[\(\[]/i;
+      let rows=null,_best=-1;
+      (wb.SheetNames||[]).forEach(sn=>{
+        const sheet=wb.Sheets[sn]; if(!sheet)return;
+        const rws=window.XLSX.utils.sheet_to_json(sheet,{header:1,defval:null,raw:false});
+        let score=0;
+        rws.forEach(rw=>{const c0=rw&&rw[0]!=null?String(rw[0]).trim():'';if(_aoHead.test(c0))score++;});
+        const head=(rws.slice(0,4).map(r=>(r||[]).map(c=>c==null?'':String(c)).join(' ')).join(' '));
+        if(/feedback guide/i.test(head))score+=0.5;
+        if(score>_best){_best=score;rows=rws;}
+      });
+      if(!rows||_best<=0){
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        rows=window.XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:false});
+      }
+      const g=(row,i)=>{const v=row&&row[i]!=null?String(row[i]).trim():'';return v;};
+      let caseName='Unknown Case',caseDay='Day 3';
+      const r0=g(rows[0],0);
+      const dm=r0.match(/Day\s*(\d)\s*[—\-–]\s*(.+?)(?:\s+Feedback Guide)?$/i);
+      if(dm){caseDay='Day '+dm[1];caseName=dm[2].trim();}
+      else if(r0)caseName=r0.replace(/feedback guide/i,'').trim();
+      rubricDraft.caseName=caseName;
+      rubricDraft.day=caseDay;
+      rubricDraft.date=new Date().toISOString().slice(0,10);
+      rubricDraft.aos=[];
+      const AREA_MAP={'financial reporting':'FR','fr':'FR','management accounting':'MA','ma':'MA','tax':'Tax','taxation':'Tax','audit':'Audit','audit and assurance':'Audit','assurance':'Audit','strategy and governance':'SG','strategy & governance':'SG','sg':'SG','strategy':'SG','finance':'Finance','fin':'Finance'};
+      function parseArea(s){const k=(s||'').toLowerCase().trim();for(const [pat,val] of Object.entries(AREA_MAP))if(k.includes(pat))return val;return 'FR';}
+      const aoRe=/^AO\d+\s*[\(\[]/i;
+      const resultVals=new Set(['NA','NC','RC','C','CD']);
+      let cur=null;
+      const flush=()=>{if(cur)rubricDraft.aos.push({...cur});cur=null;};
+      for(let ri=0;ri<rows.length;ri++){
+        const row=rows[ri];
+        const c0=g(row,0);
+        if(aoRe.test(c0)){
+          flush();
+          const m=c0.match(/^AO\d+\s*[\(\[](.*?)[\)\]]/i);
+          const inner=m?m[1]:'';
+          const parts=inner.split(/[—\-–]/);
+          const areaRaw=(parts[0]||'').trim();
+          const topicRaw=parts.slice(1).join('—').trim();
+          cur={title:c0.replace(/\s+/g,' ').trim(),area:parseArea(areaRaw),topic:topicRaw||areaRaw,result:'NA/NC',comment:''};
+          continue;
+        }
+        if(!cur)continue;
+        if(c0==='NA'){
+          const res=g(row,8).toUpperCase();
+          if(resultVals.has(res))cur.result=res==='NA'?'NA/NC':res;
+          continue;
+        }
+        if(resultVals.has(c0.toUpperCase()))continue;
+        const fb=g(row,9);
+        if(fb&&fb.length>5&&!cur.comment)cur.comment=fb.slice(0,500);
+      }
+      flush();
+      if(!rubricDraft.aos.length){statusEl.innerHTML='<span style="color:#f59e0b">⚠ No AOs detected. Make sure this is a standard CPA feedback guide.</span>';return;}
+      statusEl.innerHTML='<span style="color:#047857;font-weight:700">✓ '+rubricDraft.aos.length+' AOs extracted</span> — opening preview…';
+      openRubricModal();
+    }catch(err){statusEl.innerHTML='<span style="color:#dc2626">Error parsing file:</span> '+esc(err.message);console.error(err);}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ─── Rubric import — parse Word (.docx) and show preview ─────
+   Mirrors the Excel parser: builds rubricDraft.aos =
+   [{title, area, topic, result, comment, debriefed}]. Handles both
+   "AO1 (Area — Topic)" table guides and "Assessment Opportunity #N"
+   guides, with 5-level or NA/NC/RC/C/CD rating scales. ───────── */
+const _AREA_MAP_RB={'financial reporting':'FR','fr':'FR','management accounting':'MA','ma':'MA','tax':'Tax','taxation':'Tax','audit':'Audit','audit and assurance':'Audit','assurance':'Audit','strategy and governance':'SG','strategy & governance':'SG','sg':'SG','strategy':'SG','finance':'Finance','fin':'Finance'};
+function _parseAreaRb(s){const k=(s||'').toLowerCase().trim();for(const [pat,val] of Object.entries(_AREA_MAP_RB))if(k.includes(pat))return val;return 'FR';}
+function _levelToAbbr(s){
+  const t=(s||'').toLowerCase().trim();
+  if(!t)return null;
+  if(/competent with distinction/.test(t)||t==='cd')return 'CD';
+  if(/reaching competent/.test(t)||t==='rc')return 'RC';
+  if(/nominal competen/.test(t)||t==='nc')return 'NC';
+  if(/not addressed|not assessed/.test(t)||t==='na'||t==='n/a')return 'NA';
+  if(/^competent$/.test(t)||t==='c'||/\bcompetent\b/.test(t))return 'C';
+  return null;
+}
+const _RB_MARK=/^(x|✓|✔|√|●|•|◉|\u2713|\u2714|yes|y)$/i;
+
+/* mammoth HTML → ordered rows (array of arrays), tables + paragraphs in document order */
+function rubricHtmlToRows(html){
+  const doc=new DOMParser().parseFromString(html,'text/html');
+  const rows=[];
+  const clean=s=>(s||'').replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim();
+  const walk=el=>{
+    for(const node of el.children){
+      const tag=node.tagName.toLowerCase();
+      if(tag==='table'){
+        node.querySelectorAll('tr').forEach(tr=>{
+          const cells=[...tr.querySelectorAll('td,th')].map(td=>clean(td.textContent));
+          if(cells.length)rows.push(cells);
+        });
+      } else if(/^(p|h[1-6]|li|blockquote)$/.test(tag)){
+        rows.push([clean(node.textContent)]);
+      } else if(node.children.length){
+        walk(node);
+      }
+    }
+  };
+  walk(doc.body);
+  return rows;
+}
+
+function _decodeArea(code){
+  const c=(code||'').toUpperCase().replace(/[^A-Z&]/g,'');
+  const M={FR:'FR',MA:'MA',PM:'MA',MGMT:'MA',T:'Tax',TX:'Tax',TAX:'Tax',F:'Finance',FIN:'Finance',FN:'Finance',SG:'SG',GOV:'SG',A:'Audit',AA:'Audit',AUD:'Audit',ASR:'Audit',AS:'Audit'};
+  if(M[c])return M[c];
+  return _parseAreaRb(code);
+}
+
+function extractRubricAOs(rows, fileName){
+  const out={caseName:'Unknown Case',day:'Day 3',aos:[]};
+  const rowText=r=>(r||[]).join(' ').replace(/\s+/g,' ').trim();
+  const firstCell=r=>{for(const c of (r||[]))if(c&&c.trim())return c.trim();return '';};
+  const titleCase=s=>s.replace(/\w\S*/g,w=>w.charAt(0).toUpperCase()+w.slice(1).toLowerCase());
+  const fnameHint=(fileName||'').replace(/[_\-]+/g,' ');
+
+  // ---- day (content first, then filename) ----
+  const allHead=rows.slice(0,12).map(rowText).filter(Boolean);
+  let dayFound=false;
+  for(const t of allHead){const dm=t.match(/Day\s*([1-3])\b/i);if(dm){out.day='Day '+dm[1];dayFound=true;break;}}
+  if(!dayFound){const dm=fnameHint.match(/Day\s*([1-3])\b/i);if(dm)out.day='Day '+dm[1];}
+
+  // ---- case name ----
+  let nm='';
+  const fgRow=allHead.find(t=>/feedback guide/i.test(t));
+  const mgRow=allHead.find(t=>/mark(?:er|ing)\s*grid/i.test(t));
+  if(fgRow){
+    nm=fgRow.replace(/feedback guide/i,'').replace(/evaluation guide/i,'').replace(/common final examination/i,'')
+      .replace(/[—–-]\s*day\s*[1-3]\b/i,'').replace(/^day\s*[1-3]\s*[—–-]\s*/i,'')
+      .replace(/[—–\-:|]+\s*$/,'').replace(/^\s*[—–\-:|]+/,'').trim();
+  } else if(mgRow){
+    const m=mgRow.match(/mark(?:er|ing)\s*grid\s*[–—\-:]\s*(.+)/i);
+    nm=(m?m[1]:mgRow).replace(/\(([^)]*)\)\s*$/,'').replace(/[—–\-:|]+\s*$/,'').trim();
+    if(nm&&nm===nm.toUpperCase())nm=titleCase(nm);
+  } else {
+    const cand=allHead.find(t=>!/^(common final examination|cfe|evaluation guide|marking|note to|candidate|marker)\b/i.test(t)&&!/^day\s*[1-3]\b/i.test(t)&&t.length>3);
+    if(cand)nm=cand.replace(/feedback guide/i,'').replace(/[—–\-:|]+\s*$/,'').trim();
+  }
+  if(!nm){
+    let f=fnameHint.replace(/\.(docx?|xlsx?)$/i,'').replace(/\b(May|June|July|Sept(?:ember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\b/gi,' ')
+      .replace(/\b\d{4}\b/g,' ').replace(/\bCFE\b/gi,' ').replace(/Day\s*[1-3]/gi,' ').replace(/mark(?:er|ing)\s*grid/gi,' ')
+      .replace(/feedback guide/gi,' ').replace(/\bcase\s*\d+\b/gi,' ').replace(/\bFG\b/gi,' ').replace(/\bgrid\b/gi,' ')
+      .replace(/\b[A-Z]{2,4}\d*\b/g,' ').replace(/\s+/g,' ').trim();
+    if(f.length>3)nm=titleCase(f);
+  }
+  if(nm)out.caseName=nm;
+
+  // ---- grade summary grid (row with >=2 "AOn" cells; next row = grades) ----
+  const aoCellRe=/^\s*AO\s*#?\s*\d+\b/i;
+  const gridGrade={},gridArea={}; let gridRow=-1;
+  for(let i=0;i<rows.length;i++){
+    const r=rows[i];
+    if(r.filter(c=>aoCellRe.test(c||'')).length>=2){
+      gridRow=i;
+      r.forEach((c,ci)=>{
+        const m=(c||'').match(/^\s*AO\s*#?\s*(\d+)\s*[-–—]?\s*([A-Za-z&]{1,6})?/i);
+        if(m){const num=+m[1];if(m[2])gridArea[num]=_decodeArea(m[2]);
+          const g=_levelToAbbr(((rows[i+1]||[])[ci]||'').trim());if(g)gridGrade[num]=(g==='NA')?'NA/NC':g;}
+      });
+      break;
+    }
+  }
+
+  // ---- AOs ----
+  const aoHeadRe=/^\s*AO\s*#?\s*\d+\s*[\(\[]/i;
+  const aoApptRe=/^\s*(assessment opportunity|ao)\s*#?\s*\d+\b/i;
+  const aoDashRe=/^\s*AO\s*#?\s*(\d+)\s*[-–—]\s*([A-Za-z&]{1,6})\b/i;
+  const resultVals=new Set(['NA','NC','RC','C','CD']);
+  let cur=null,levelCols=null,n=0,curNum=0;
+  const flush=()=>{if(cur){if(!cur.comment&&cur._fb)cur.comment=cur._fb;delete cur._fb;out.aos.push(cur);}cur=null;levelCols=null;};
+
+  for(let ri=0;ri<rows.length;ri++){
+    if(ri===gridRow||ri===gridRow+1)continue;
+    const row=rows[ri];
+    const c0=firstCell(row);
+    const txt=rowText(row);
+
+    if(aoHeadRe.test(c0)||aoApptRe.test(c0)){
+      flush(); n++;
+      const numM=c0.match(/^\s*AO\s*#?\s*(\d+)/i); curNum=numM?+numM[1]:n;
+      let title=c0.replace(/\s+/g,' ').trim(),area='',topic='';
+      const par=c0.match(/[\(\[]([^\)\]]*)[\)\]]/);
+      if(par){
+        const parts=par[1].split(/[—–\-\/:]/);
+        area=_parseAreaRb((parts[0]||'').trim());
+        topic=parts.slice(1).join(' — ').trim()||(parts[0]||'').trim();
+      } else {
+        const dm=c0.match(aoDashRe); if(dm)area=_decodeArea(dm[2]);
+        const desc=row.length>1?row.slice(1).join(' ').trim():'';
+        if(desc&&desc.length>3)topic=desc.slice(0,90);
+      }
+      if(!area&&gridArea[curNum])area=gridArea[curNum];
+      cur={title,area:area||'',topic:topic||'',result:gridGrade[curNum]||'NA/NC',comment:'',_fb:''};
+      continue;
+    }
+    if(!cur)continue;
+
+    if(/^ranking$/i.test(c0)){const g=_levelToAbbr(row[1]||row.slice(1).join(' '));if(g)cur.result=(g==='NA')?'NA/NC':g;continue;}
+    if(/^marker\s*notes?$/i.test(c0))continue;
+    if(/^comments?$/i.test(c0)){const fb=(row.slice(1).join(' ')||'').trim();if(fb.length>2)cur.comment=fb.slice(0,600);continue;}
+    if(/results\s*:/i.test(c0)){
+      const fbCell=(row[1]||'').trim();
+      const lead=fbCell.match(/^\s*(NA|NC|RC|C|CD)\b/i);
+      if(lead&&cur.result==='NA/NC'){const a=lead[1].toUpperCase();cur.result=(a==='NA')?'NA/NC':a;}
+      if(!cur._fb)cur._fb=fbCell.replace(/^\s*(NA|NC|RC|C|CD)\s*[-–—:]\s*/i,'').slice(0,600);
+      continue;
+    }
+
+    if(!cur.area){
+      const compTxt=txt.replace(/^[\(\[]|[\)\]]$/g,'').trim();
+      const parts=compTxt.split(/[—–\-\/:]/);
+      const cand=(parts[0]||'').trim().toLowerCase();
+      const isArea=Object.keys(_AREA_MAP_RB).some(k=>cand===k||cand.startsWith(k)||(k.startsWith(cand)&&cand.length>2));
+      if(isArea && compTxt.length<60 && !/feedback|comment/i.test(compTxt)){
+        cur.area=_parseAreaRb(parts[0]);cur.topic=parts.slice(1).join(' — ').trim();
+        if(cur.title&&!/[\(\[]/.test(cur.title))cur.title=cur.title+' ('+(parts[0]||'').trim()+(cur.topic?' — '+cur.topic:'')+')';
+        continue;
+      }
+    }
+
+    const named=[];
+    row.forEach((c,ci)=>{const a=_levelToAbbr(c);if(a&&c.trim().length<=30)named.push({ci,a});});
+    if(named.length>=3 && new Set(named.map(x=>x.a)).size>=3){levelCols={};named.forEach(x=>{levelCols[x.ci]=x.a;});continue;}
+
+    if(levelCols){
+      let markCol=-1;for(let ci=0;ci<row.length;ci++){if(_RB_MARK.test((row[ci]||'').trim())){markCol=ci;break;}}
+      if(markCol>=0){let a=levelCols[markCol];if(!a){const cols=Object.keys(levelCols).map(Number);let best=cols[0],bd=1e9;cols.forEach(cc=>{const d=Math.abs(cc-markCol);if(d<bd){bd=d;best=cc;}});a=levelCols[best];}if(a){cur.result=(a==='NA')?'NA/NC':a;levelCols=null;continue;}}
+    }
+
+    const tokA=_levelToAbbr(c0);
+    if((resultVals.has(c0.toUpperCase())||tokA)&&txt.length<=40&&!/feedback|comment/i.test(txt)){
+      if(cur.result==='NA/NC'){const a=resultVals.has(c0.toUpperCase())?c0.toUpperCase():tokA;cur.result=(a==='NA')?'NA/NC':a;}
+      continue;
+    }
+
+    const fbm=txt.match(/^\s*(?:\w+\s+)?(feedback|comments?|rationale|notes?|debrief|assessment)\b\s*[:\-–]?\s*(.*)$/i);
+    if(fbm){const body=fbm[2].trim();if(body.length>3)cur.comment=(cur.comment?cur.comment+' ':'')+body;continue;}
+
+    if(!cur._fb && txt.length>25 && !/^(not addressed|nominal|reaching|competent|n\/a)/i.test(txt))cur._fb=txt.slice(0,600);
+  }
+  flush();
+  out.aos.forEach(a=>{if(a.comment)a.comment=a.comment.slice(0,600);});
+  return out;
+}
+
+function doParseRubricWord(file,statusEl){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    window.mammoth.convertToHtml({arrayBuffer:e.target.result})
+      .then(res=>{
+        const rows=rubricHtmlToRows(res.value||'');
+        const ex=extractRubricAOs(rows, file.name);
+        rubricDraft.caseName=ex.caseName;
+        rubricDraft.day=ex.day;
+        rubricDraft.date=new Date().toISOString().slice(0,10);
+        rubricDraft.aos=ex.aos.map(a=>({title:a.title,area:a.area||'FR',topic:a.topic||'',result:a.result||'NA/NC',comment:a.comment||'',debriefed:'No'}));
+        if(!rubricDraft.aos.length){statusEl.innerHTML='<span style="color:#f59e0b">⚠ No AOs detected. Make sure this is a standard CPA feedback guide (AO titles like “AO1 (Financial Reporting — …)” or “Assessment Opportunity #1”).</span>';return;}
+        statusEl.innerHTML='<span style="color:#047857;font-weight:700">✓ '+rubricDraft.aos.length+' AOs extracted</span> — opening preview…';
+        openRubricModal();
+      })
+      .catch(err=>{statusEl.innerHTML='<span style="color:#dc2626">Error parsing Word file:</span> '+esc(err.message||err);console.error(err);});
+  };
+  reader.onerror=()=>{statusEl.innerHTML='<span style="color:#dc2626">Could not read the file.</span>';};
+  reader.readAsArrayBuffer(file);
+}
+
+function openRubricModal(){
+  // Populate case info
+  document.getElementById('rb-case-name').value=rubricDraft.caseName;
+  document.getElementById('rb-case-date').value=rubricDraft.date;
+  document.getElementById('rb-case-day').value=rubricDraft.day;
+  document.getElementById('rb-case-attempt').value=rubricDraft.attempt||'First';
+  document.getElementById('rb-ao-count').textContent=rubricDraft.aos.length+' AOs';
+
+  // Render editable AO table
+  const tbody=document.getElementById('rb-ao-tbody');
+  tbody.innerHTML=rubricDraft.aos.map((a,i)=>{
+    const aOpts=['FR','MA','Tax','Audit','SG','Finance'].map(x=>`<option${x===a.area?' selected':''}>${x}</option>`).join('');
+    const rOpts=['NA/NC','NC','RC','C','CD'].map(x=>`<option${x===a.result?' selected':''}>${x}</option>`).join('');
+    return `<tr>
+      <td style="font-size:11px;color:var(--hint);font-weight:700;white-space:nowrap">AO${i+1}</td>
+      <td><input value="${esc(a.title)}" oninput="rubricDraft.aos[${i}].title=this.value" style="width:100%;font-size:11px"></td>
+      <td><select onchange="rubricDraft.aos[${i}].area=this.value;refreshTopicOpts(${i})" style="font-size:11px;width:100%">${aOpts}</select></td>
+      <td><input id="rb-topic-${i}" value="${esc(a.topic)}" oninput="rubricDraft.aos[${i}].topic=this.value" list="rb-topics-${i}" style="width:100%;font-size:11px">
+          <datalist id="rb-topics-${i}">${(getTopicsForArea(a.area)||[]).map(t=>`<option>${esc(t)}</option>`).join('')}</datalist></td>
+      <td><select onchange="rubricDraft.aos[${i}].result=this.value" style="font-size:11px;width:100%">${rOpts}</select></td>
+      <td><select onchange="rubricDraft.aos[${i}].debriefed=this.value" style="font-size:11px;width:100%">
+        <option value="No">—</option><option value="Yes">Yes ✓</option></select></td>
+      <td><textarea oninput="rubricDraft.aos[${i}].comment=this.value" rows="2" style="width:100%;font-size:10.5px;font-family:var(--font);padding:4px 6px;border:0.5px solid rgba(175,192,255,.35);border-radius:5px;background:#fafcff;resize:vertical">${esc(a.comment||'')}</textarea></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('rubric-ov').classList.add('open');
+}
+
+function refreshTopicOpts(i){
+  const area=rubricDraft.aos[i].area;
+  const dl=document.getElementById('rb-topics-'+i);
+  if(dl) dl.innerHTML=(getTopicsForArea(area)||[]).map(t=>`<option>${esc(t)}</option>`).join('');
+}
+
+function closeRubricModal(){document.getElementById('rubric-ov').classList.remove('open');}
+
+function saveRubricImport(){
+  // Read case info back from modal
+  const caseName=document.getElementById('rb-case-name').value.trim();
+  if(!caseName){showToast('Enter a case name');return;}
+  const date=document.getElementById('rb-case-date').value;
+  const day=document.getElementById('rb-case-day').value;
+  const attempt=document.getElementById('rb-case-attempt').value;
+
+  // Check if case already exists
+  let c=db.cases.find(x=>x.name===caseName);
+  if(!c){
+    c={id:uid(),name:caseName,date,day,attempt,revised:'No',debriefed:'No',notes:'',standard:'',spaced:'Attempted'};
+    db.cases.push(c);
+  }
+
+  // Add AOs (skip duplicates by title)
+  let added=0;
+  rubricDraft.aos.forEach(a=>{
+    const exists=db.aos.find(x=>x.case_id===c.id&&x.title===a.title);
+    if(!exists){
+      db.aos.push({
+        id:uid(),case_id:c.id,
+        title:a.title,area:normArea(a.area),topic:a.topic||'',
+        result:a.result||'NA/NC',comment:a.comment||'',
+        debriefed:a.debriefed||'No',needNotes:'',gapNotes:'',pointsNotes:''
+      });
+      added++;
+    }
+  });
+  sv();closeRubricModal();rdDash();
+  document.getElementById('rubric-status').innerHTML=`<span style="color:#047857;font-weight:700">✓ Saved!</span> Case "<strong>${esc(caseName)}</strong>" added with ${added} AOs.`;
+  showToast('Rubric imported ✓ — '+added+' AOs saved',2800);
+
+  // Switch to the case detail
+  setTimeout(()=>openDet(c.id),400);
+}
+
 /* ─── Reset all ──────────────────────────────────────────────── */
 function resetAll(){
   if(!confirm('Permanently delete ALL cases and AOs?\n\nExport a backup first.\n\nContinue?'))return;
@@ -1943,26 +2250,30 @@ function resetAll(){
 /* ─── Learning sky ───────────────────────────────────────────── */
 function rSkyStar(el,big){
   if(!el)return;
-  // Count C/CD results per normalized topic key
-  const ccdCounts={};
+  // A topic's star turns gold once it has been marked CD (mastered with distinction);
+  // any other attempt (C / RC / NC / NA) shows a dim blue star.
+  const cdKeys=new Set();
   const attemptedKeys=new Set();
   db.aos.forEach(a=>{
     const key=(a.topic||a.title||'').toLowerCase();
     if(!key)return;
     attemptedKeys.add(key);
-    if(a.result==='C'||a.result==='CD')ccdCounts[key]=(ccdCounts[key]||0)+1;
+    if(a.result==='CD')cdKeys.add(key);
   });
-  const masteredKeys=Object.keys(ccdCounts).filter(k=>ccdCounts[k]>=3);
+  const masteredKeys=[...cdKeys];
+  const attArr=[...attemptedKeys];
+  const matchKey=(nm,arr)=>arr.some(m=>m.includes(nm)||nm.includes(m.split(' ')[0]));
   const fs=big?13:9.5,lfs=big?8.5:6;
+  let goldCount=0;
   el.innerHTML=SKY_POS.map(s=>{
     const nm=s.t.toLowerCase().replace(/[^a-z ]/g,'').split(' ')[0];
-    const isM=masteredKeys.some(m=>m.includes(nm)||nm.includes(m.split(' ')[0]));
-    const isA=!isM&&[...attemptedKeys].some(m=>m.includes(nm)||nm.includes(m.split(' ')[0]));
-    if(isM)return '<div title="'+esc(s.t)+' — mastered (3+ C/CD) ✓" style="position:absolute;left:'+s.x+'%;top:'+s.y+'%;transform:translate(-50%,-50%);font-size:'+fs+'px;color:#fcd34d;line-height:1;text-align:center;text-shadow:0 0 10px rgba(252,211,77,.80),0 0 20px rgba(252,211,77,.40)">★<div style="font-size:'+lfs+'px;color:rgba(252,211,77,.90);margin-top:1px;white-space:nowrap">'+esc(s.t)+'</div></div>';
-    if(isA)return '<div title="'+esc(s.t)+' — attempted (needs 3+ C/CD to glow)" style="position:absolute;left:'+s.x+'%;top:'+s.y+'%;transform:translate(-50%,-50%);font-size:'+fs+'px;color:rgba(147,197,253,.40);line-height:1;text-align:center">★<div style="font-size:'+lfs+'px;color:rgba(147,197,253,.28);margin-top:1px;white-space:nowrap">'+esc(s.t)+'</div></div>';
+    const isM=matchKey(nm,masteredKeys);
+    const isA=!isM&&matchKey(nm,attArr);
+    if(isM){goldCount++;return '<div title="'+esc(s.t)+' — mastered (CD) ✓" style="position:absolute;left:'+s.x+'%;top:'+s.y+'%;transform:translate(-50%,-50%);font-size:'+fs+'px;color:#fcd34d;line-height:1;text-align:center;text-shadow:0 0 10px rgba(252,211,77,.80),0 0 20px rgba(252,211,77,.40)">★<div style="font-size:'+lfs+'px;color:rgba(252,211,77,.90);margin-top:1px;white-space:nowrap">'+esc(s.t)+'</div></div>';}
+    if(isA)return '<div title="'+esc(s.t)+' — attempted (mark CD to make it glow gold)" style="position:absolute;left:'+s.x+'%;top:'+s.y+'%;transform:translate(-50%,-50%);font-size:'+fs+'px;color:rgba(147,197,253,.40);line-height:1;text-align:center">★<div style="font-size:'+lfs+'px;color:rgba(147,197,253,.28);margin-top:1px;white-space:nowrap">'+esc(s.t)+'</div></div>';
     return '<div title="'+esc(s.t)+' — not started" style="position:absolute;left:'+s.x+'%;top:'+s.y+'%;transform:translate(-50%,-50%);font-size:'+(fs-2)+'px;color:rgba(100,149,237,.15)">·</div>';
   }).join('');
-  if(big){const cnt=masteredKeys.length;const el2=document.getElementById('sky-count');if(el2)el2.textContent=cnt+' topic'+(cnt!==1?'s':'')+' mastered (3+ C/CD)';}
+  if(big){const cnt=goldCount;const el2=document.getElementById('sky-count');if(el2)el2.textContent=cnt+' topic'+(cnt!==1?'s':'')+' mastered (CD)';}
 }
 
 /* ─── Analytics ──────────────────────────────────────────────── */
@@ -2474,32 +2785,15 @@ function saveAONotes(){
 
 /* ─── Keyboard shortcuts ─────────────────────────────────────── */
 document.addEventListener('keydown',function(e){
-  if(e.key==='Escape'){closeM();closeAONotes();closeTopicsModal();}
+  if(e.key==='Escape'){closeM();closeAONotes();closeTopicsModal();closeRubricModal();}
   if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();openAdd();}
 });
 
-/* ─── Init (Supabase auth-gated) ─────────────────────────────── */
+/* ─── Init ───────────────────────────────────────────────────── */
 document.getElementById('na-a').addEventListener('change',popTop);
-
-// Show auth screen immediately while we wait for session check
-showAuthScreen();
-
-_supabase.auth.onAuthStateChange(async(event,session)=>{
-  if(session&&session.user){
-    currentUser=session.user;
-    await loadDBFromCloud();
-    hideAuthScreen();
-    applySettings();
-    rdDash();
-    popTop();
-    goPage('dashboard',document.querySelector('[data-p="dashboard"]'));
-  } else {
-    currentUser=null;
-    db={cases:[],aos:[],notes:'',resources:[],topicReviews:{}};
-    CFG={...DEF_SETTINGS};
-    showAuthScreen();
-  }
-});
+popTop();
+applySettings();
+rdDash();
 </script>
 </body>
 </html>
