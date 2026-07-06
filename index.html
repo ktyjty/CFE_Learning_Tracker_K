@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CFE Learning Tracker</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 /* ═══════════════════════════════════════════════════════════
    BASE
@@ -489,6 +490,7 @@ tr:hover td{background:rgba(99,102,241,0.025)}
     <span style="color:var(--indigo);font-weight:700">78%</span>
   </div>
   <div class="t-time"><i class="ti ti-clock" style="font-size:13px"></i><span id="top-time">42 min</span></div>
+  <button class="moon-btn" onclick="signOut()" id="signout-btn" style="font-size:11px;display:none"><i class="ti ti-logout"></i> Sign out</button>
   <!-- cute cloud + sun icon (no droplet) -->
   <svg width="32" height="26" viewBox="0 0 32 26" fill="none" aria-hidden="true" style="flex-shrink:0;margin-left:4px">
     <circle cx="25" cy="5" r="3.5" fill="#fcd34d" opacity=".88"/>
@@ -1191,23 +1193,139 @@ const SKY_POS=[
   {t:'WACC',x:75,y:35},{t:'Provisions',x:7,y:38},{t:'EPS',x:95,y:42}
 ];
 
-/* ─── Data layer ───────────────────────────────────────────── */
-function loadDB(){
-  try{ return JSON.parse(localStorage.getItem('cfe_v5')||'null')||{cases:[],aos:[],notes:'',resources:[],topicReviews:{}}; }
-  catch(e){ return {cases:[],aos:[],notes:'',resources:[],topicReviews:{}}; }
+/* ─── Supabase setup ────────────────────────────────────────── */
+const SUPABASE_URL='https://fmdywtsnqxvwdpfgsddy.supabase.co';
+const SUPABASE_KEY='sb_publishable_GPg_4TWiJeW1pOwrH88YfA_so3jnfgV';
+const _memStorage={_data:{},getItem(k){return this._data[k]??null},setItem(k,v){this._data[k]=v},removeItem(k){delete this._data[k]}};
+const _supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
+  auth:{storage:_memStorage,persistSession:false,autoRefreshToken:true,detectSessionInUrl:false}
+});
+let currentUser=null;
+
+/* ─── Auth UI ───────────────────────────────────────────────── */
+function showAuthScreen(){
+  document.querySelector('.app').style.display='none';
+  let el=document.getElementById('auth-screen');
+  if(!el){
+    el=document.createElement('div');el.id='auth-screen';
+    el.innerHTML=`<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;
+      background:radial-gradient(ellipse 90% 55% at 8% 6%,rgba(255,215,185,.50) 0%,transparent 58%),
+      radial-gradient(ellipse 65% 45% at 92% 4%,rgba(225,210,255,.55) 0%,transparent 52%),
+      linear-gradient(155deg,#e6eaf9 0%,#dce3f7 22%,#ede9fb 48%,#e2eaf8 75%,#dde4f7 100%)">
+      <div style="background:#fff;border-radius:18px;padding:36px 40px;width:380px;max-width:94vw;
+        box-shadow:0 16px 60px rgba(99,102,241,.14);border:0.5px solid rgba(175,192,255,.4)">
+        <div style="text-align:center;margin-bottom:28px">
+          <div style="font-size:28px;margin-bottom:8px">📚</div>
+          <div style="font-size:17px;font-weight:700;color:#4f46e5;letter-spacing:-.01em">CFE Learning Tracker</div>
+          <div style="font-size:12px;color:#5a6a82;margin-top:4px">Sign in to access your data</div>
+        </div>
+        <div id="auth-msg" style="font-size:12px;margin-bottom:12px;text-align:center;padding:8px 12px;border-radius:8px;display:none"></div>
+        <div style="margin-bottom:13px">
+          <label style="font-size:10.5px;font-weight:700;color:#5a6a82;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Email</label>
+          <input id="auth-email" type="email" placeholder="you@example.com" autocomplete="email"
+            style="width:100%;padding:9px 12px;border:0.5px solid rgba(175,192,255,.5);border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;outline:none"
+            onkeydown="if(event.key==='Enter')doSignIn()">
+        </div>
+        <div style="margin-bottom:22px">
+          <label style="font-size:10.5px;font-weight:700;color:#5a6a82;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Password</label>
+          <input id="auth-pw" type="password" placeholder="••••••••" autocomplete="current-password"
+            style="width:100%;padding:9px 12px;border:0.5px solid rgba(175,192,255,.5);border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;outline:none"
+            onkeydown="if(event.key==='Enter')doSignIn()">
+        </div>
+        <button onclick="doSignIn()" style="width:100%;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;border:none;border-radius:9px;padding:12px;font-size:13px;font-family:inherit;font-weight:700;cursor:pointer;margin-bottom:10px;transition:opacity .12s" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">Sign In</button>
+        <button onclick="doSignUp()" style="width:100%;background:#fff;color:#4f46e5;border:0.5px solid rgba(99,102,241,.3);border-radius:9px;padding:11px;font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;transition:background .12s" onmouseover="this.style.background='rgba(99,102,241,.06)'" onmouseout="this.style.background='#fff'">Create Account</button>
+        <div style="text-align:center;margin-top:14px">
+          <button onclick="doForgot()" style="background:none;border:none;color:#818cf8;font-size:11.5px;cursor:pointer;font-family:inherit">Forgot password?</button>
+        </div>
+        <div style="margin-top:18px;padding:9px 12px;background:rgba(251,191,36,0.12);border:0.5px solid rgba(251,191,36,0.4);border-radius:8px;text-align:center">
+          <div style="font-size:11px;font-weight:700;color:#92400e;margin-bottom:2px">⚠️ Beta Version</div>
+          <div style="font-size:10.5px;color:#a16207;line-height:1.5">This tracker is currently in testing. Please export your data regularly. We do not guarantee data retention.</div>
+        </div>
+      </div></div>`;
+    document.body.appendChild(el);
+  }
+  el.style.display='block';
 }
-let db=loadDB();
-if(!db.topicReviews)db.topicReviews={};
-let eId=null,tAOs=[],aF='all';
-function sv(){
-  try{ localStorage.setItem('cfe_v5',JSON.stringify(db)); }
-  catch(e){ showToast('Storage full — export to backup!'); }
+function hideAuthScreen(){
+  const el=document.getElementById('auth-screen');
+  if(el)el.style.display='none';
+  document.querySelector('.app').style.display='flex';
+  const btn=document.getElementById('signout-btn');
+  if(btn)btn.style.display='flex';
+}
+function showAuthMsg(msg,type='error'){
+  const el=document.getElementById('auth-msg');if(!el)return;
+  el.textContent=msg;el.style.display='block';
+  el.style.background=type==='success'?'#d1fae5':'#fee2e2';
+  el.style.color=type==='success'?'#065f46':'#c92222';
+}
+async function doSignIn(){
+  const email=(document.getElementById('auth-email')||{}).value||'';
+  const pw=(document.getElementById('auth-pw')||{}).value||'';
+  if(!email||!pw){showAuthMsg('Please enter email and password.');return;}
+  const btn=document.querySelector('#auth-screen button');
+  btn.textContent='Signing in…';btn.disabled=true;
+  try{
+    const {data,error}=await _supabase.auth.signInWithPassword({email,password:pw});
+    if(error){showAuthMsg(error.message);btn.textContent='Sign In';btn.disabled=false;}
+    else if(data&&data.user){
+      currentUser=data.user;await loadDBFromCloud();
+      hideAuthScreen();applySettings();rdDash();popTop();
+      goPage('dashboard',document.querySelector('[data-p="dashboard"]'));
+    }else{showAuthMsg('Login failed — no user returned');btn.textContent='Sign In';btn.disabled=false;}
+  }catch(e){showAuthMsg('Error: '+e.message);btn.textContent='Sign In';btn.disabled=false;}
+}
+async function doSignUp(){
+  const email=(document.getElementById('auth-email')||{}).value||'';
+  const pw=(document.getElementById('auth-pw')||{}).value||'';
+  if(!email||!pw){showAuthMsg('Please enter email and password.');return;}
+  if(pw.length<6){showAuthMsg('Password must be at least 6 characters.');return;}
+  const {error}=await _supabase.auth.signUp({email,password:pw});
+  if(error)showAuthMsg(error.message);
+  else showAuthMsg('Account created! Check your email to confirm, or sign in.','success');
+}
+async function doForgot(){
+  const email=(document.getElementById('auth-email')||{}).value||'';
+  if(!email){showAuthMsg('Enter your email address first.');return;}
+  const {error}=await _supabase.auth.resetPasswordForEmail(email);
+  if(error)showAuthMsg(error.message);
+  else showAuthMsg('Password reset email sent — check your inbox.','success');
+}
+async function signOut(){
+  await _supabase.auth.signOut();
+  const btn=document.getElementById('signout-btn');if(btn)btn.style.display='none';
+  db={cases:[],aos:[],notes:'',resources:[],topicReviews:{}};
+  CFG={...DEF_SETTINGS};currentUser=null;showAuthScreen();
 }
 
-/* Settings */
+/* ─── Cloud data layer ──────────────────────────────────────── */
+function loadDB(){return {cases:[],aos:[],notes:'',resources:[],topicReviews:{}};}
+let db=loadDB();
+let eId=null,tAOs=[],aF='all';
+async function loadDBFromCloud(){
+  if(!currentUser)return;
+  const {data}=await _supabase.from('user_data').select('data,settings').eq('user_id',currentUser.id).single();
+  if(data&&data.data){
+    db=data.data;
+    if(!db.topicReviews)db.topicReviews={};
+    if(!db.resources)db.resources=[];
+    CFG=Object.assign({},DEF_SETTINGS,data.settings||{});
+  }
+}
+async function sv(){
+  if(!currentUser)return;
+  try{
+    await _supabase.from('user_data').upsert({
+      user_id:currentUser.id,data:db,settings:CFG,
+      updated_at:new Date().toISOString()
+    },{onConflict:'user_id'});
+  }catch(e){showToast('Save error — check your connection');}
+}
+
+/* Settings (stored in Supabase via sv()) */
 const DEF_SETTINGS={name:'future CPA',msg:'small steps today, massive impact tomorrow',focus:'Focus: outline one AO — 5 min',cardT:'Keep going! ✨',cardB:"Progress is progress, no matter how small. You're building mastery.",topicLists:{}};
-function loadSettings(){ try{return Object.assign({},DEF_SETTINGS,JSON.parse(localStorage.getItem('cfe_settings')||'{}'));}catch(e){return {...DEF_SETTINGS};} }
-function svSettings(s){ try{localStorage.setItem('cfe_settings',JSON.stringify(s));}catch(e){} }
+function loadSettings(){return {...DEF_SETTINGS};}
+function svSettings(s){CFG=s;sv();}
 let CFG=loadSettings();
 
 function applySettings(){
@@ -2789,11 +2907,23 @@ document.addEventListener('keydown',function(e){
   if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();openAdd();}
 });
 
-/* ─── Init ───────────────────────────────────────────────────── */
+/* ─── Init (auth-gated) ─────────────────────────────────────── */
 document.getElementById('na-a').addEventListener('change',popTop);
-popTop();
-applySettings();
-rdDash();
+showAuthScreen();
+_supabase.auth.onAuthStateChange(async(event,session)=>{
+  if(session&&session.user){
+    currentUser=session.user;
+    await loadDBFromCloud();
+    hideAuthScreen();
+    applySettings();rdDash();popTop();
+    goPage('dashboard',document.querySelector('[data-p="dashboard"]'));
+  } else {
+    currentUser=null;
+    db={cases:[],aos:[],notes:'',resources:[],topicReviews:{}};
+    CFG={...DEF_SETTINGS};
+    showAuthScreen();
+  }
+});
 </script>
 </body>
 </html>
